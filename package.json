@@ -13,7 +13,11 @@
     "vscode": "^1.90.0"
   },
   "categories": [
+    "Snippets",
     "Other"
+  ],
+  "keywords": [
+    "latex", "tex", "math", "mathematics", "symbols", "dictionary", "snippet"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -40,6 +44,7 @@
     ]
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"
   },
