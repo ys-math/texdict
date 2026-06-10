@@ -2,7 +2,7 @@
   "name": "texdict",
   "displayName": "TeXDict",
   "description": "Search a LaTeX command by its concept name and insert it at the cursor.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "yutosasaki",
   "license": "MIT",
   "repository": {
@@ -34,8 +34,12 @@
     "languages": [
       {
         "id": "latex",
-        "aliases": ["LaTeX"],
-        "extensions": [".tex"]
+        "aliases": [
+          "LaTeX"
+        ],
+        "extensions": [
+          ".tex"
+        ]
       }
     ]
   },
