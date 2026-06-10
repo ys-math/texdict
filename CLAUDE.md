@@ -5,13 +5,17 @@ by its concept name (e.g. "integral" → `\int`) and insert it at the cursor.
 
 ## Status
 
-Phases 0–3 complete (v0.0.1, feature-complete). Phase 4 (package as `.vsix`) is
-optional and not yet started. Side panel (Tree/Webview) was considered and deferred.
+Phases 0–4 complete. Current version **0.0.3**: feature-complete, packaged, installed
+locally, and published to GitHub Releases via CI. Dictionary holds **263 symbols**.
+Releases are automated by GitHub Actions on `v*` tag push (see "Release / CI" below).
+Side panel (Tree/Webview) was considered and deferred.
 
 ## File structure
 
 ```
 texdict/
+├── .github/workflows/
+│   └── release.yml       — CI: build + publish .vsix to a GitHub Release on v* tag push
 ├── src/
 │   ├── extension.ts      — activation, QuickPick UI, insert/clipboard logic
 │   └── dictionary.ts     — Entry[], FACETS, facetOf() — pure data, no VS Code imports
@@ -20,7 +24,10 @@ texdict/
 │   ├── launch.json       — F5 debug config (Extension Development Host)
 │   └── tasks.json        — "npm: compile" as default build task
 ├── package.json          — extension manifest
+├── package-lock.json     — locked deps (npm ci uses it in CI)
 ├── tsconfig.json         — strict, ES2022, Node16 modules, outDir=out
+├── README.md             — user-facing docs
+├── LICENSE               — MIT
 └── .vscodeignore         — excludes src/, .vscode/, *.ts, *.map from .vsix
 ```
 
@@ -42,16 +49,25 @@ interface Entry {
 }
 
 const FACETS: { name: string; tags: string[] }[]
-// Three facets: "Subjects" | "Symbol types" | "Character class"
-
 function facetOf(tag: string): string | undefined
 ```
 
-`DICTIONARY` has 57 entries across 7 comment-delimited sections:
-Calculus & Analysis, Set Theory & Logic, Group Theory & Algebra, Number Sets
-(blackboard bold), Relations & Arrows, Greek Letters, Structures.
+Three facets group every tag (each tag belongs to exactly one):
+- **Subjects**: algebra, analysis, calculus, category theory, combinatorics, complex,
+  geometry, group theory, linear algebra, logic, number theory, order theory,
+  probability, set theory, topology
+- **Symbol types**: accent, arrow, big operator, bracket, operation, operator,
+  quantifier, relation, structure
+- **Character class**: blackboard, fraktur, greek, hebrew, script
 
-**To add symbols**: only edit `dictionary.ts`. The UI re-derives everything from `DICTIONARY`.
+`DICTIONARY` has **263 entries** across ~25 comment-delimited topic sections (calculus,
+set theory/logic, group theory/algebra, order/lattice theory, relations, operations, big
+operators, arrows/category theory, number sets, geometry, probability, Greek letters,
+accents, script/fraktur, …).
+
+**To add symbols**: only edit `dictionary.ts`. The UI re-derives everything (including the
+tag filter) from `DICTIONARY` + `FACETS`. **Every tag used must exist in `FACETS`** — an
+unregistered tag won't appear in the filter and `facetOf()` returns `undefined`.
 
 ### `src/extension.ts` — command layer
 
@@ -67,7 +83,7 @@ Key functions:
 | Function | What it does |
 |---|---|
 | `toSymbolItem(e)` | Converts `Entry` → `SymbolItem`. label = `${symbol}  ${command}`, description = `${name}   ${keywords}`, detail = comma-joined tags. |
-| `buildGroupedItems(entries)` | Groups entries by `tags[0]`; inserts `QuickPickItemKind.Separator` rows between groups. |
+| `buildGroupedItems(entries)` | Sorts entries by `tags[0]` (so each header appears once), then groups them with `QuickPickItemKind.Separator` rows between primary-tag groups. |
 | `pickFilterTags(active)` | Opens a multi-select sub-picker grouped by FACET. Returns chosen tags, or `undefined` on Esc. |
 | `activate(context)` | Registers `texdict.search`. Creates a persistent `createQuickPick()` with filter + clear toolbar buttons. |
 
@@ -93,7 +109,9 @@ shift.
 "main":       "./out/extension.js",
 "engines":    { "vscode": "^1.90.0" },
 "publisher":  "yutosasaki",
-"version":    "0.0.1"
+"license":    "MIT",
+"repository": { "type": "git", "url": "https://github.com/ys-math/texdict.git" },
+"version":    "0.0.3"
 ```
 
 Contributions:
@@ -139,4 +157,23 @@ Invoke the command via: **Cmd/Ctrl+Shift+P → "TeXDict: Search LaTeX Dictionary
 | 1 | First insert command | Done |
 | 2 | QuickPick search | Done |
 | 3 | Polish (keybinding, scope, fallback) | Done |
-| 4 | Package as `.vsix` | Not started (optional) |
+| 4 | Package as `.vsix` + publish | Done (CI-automated) |
+
+## Release / CI
+
+`.github/workflows/release.yml` runs on every `v*` tag push: `actions/checkout` →
+`setup-node` (20) → `npm ci` → `npm run compile` → `npx @vscode/vsce package` →
+`gh release create` (attaches the `.vsix`). Needs `permissions: contents: write` for the
+built-in `GITHUB_TOKEN`. Releases live at https://github.com/ys-math/texdict/releases.
+
+**To cut a release:**
+
+```bash
+git add -A && git commit -m "..."
+npm version patch          # bumps package.json + lockfile, commits, creates the v-tag
+git push --follow-tags     # pushing the tag triggers the workflow → builds & publishes
+```
+
+Notes:
+- Keep the `version` in `package.json` ahead of the installed one or `code --install-extension` won't replace it. `npm version` keeps `package-lock.json` in sync (required by `npm ci`).
+- A tag-triggered workflow added in the *same* push as its first tag may not fire (registration race); re-push the tag once. Subsequent tags trigger normally.
