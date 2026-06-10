@@ -1,0 +1,36 @@
+name: Release
+
+# Trigger: whenever a tag like v0.0.3 is pushed.
+on:
+  push:
+    tags:
+      - "v*"
+
+# Let the built-in GITHUB_TOKEN create a Release (needs write on repo contents).
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Clone the repo at the pushed tag.
+      - uses: actions/checkout@v4
+
+      # 2. Install Node.js.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3. Install deps from the lockfile, then build + package the .vsix.
+      - run: npm ci
+      - run: npm run compile
+      - run: npx --yes @vscode/vsce package
+
+      # 4. Create a GitHub Release for this tag and attach the .vsix.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" ./*.vsix
+          --title "${{ github.ref_name }}"
+          --notes "Automated release of ${{ github.ref_name }}. Install via the attached .vsix."

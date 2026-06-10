@@ -27,10 +27,13 @@ function toSymbolItem(e: Entry): SymbolItem {
 }
 
 // Build symbol rows grouped under their PRIMARY tag (tags[0]) with separators.
+// Sort by primary tag first so each header appears exactly once (entries are
+// authored in topic order, not tag order, so the same primary tag is scattered).
 function buildGroupedItems(entries: Entry[]): vscode.QuickPickItem[] {
   const items: vscode.QuickPickItem[] = [];
   let current: string | null = null;
-  for (const e of entries) {
+  const sorted = [...entries].sort((a, b) => a.tags[0].localeCompare(b.tags[0]));
+  for (const e of sorted) {
     const primary = e.tags[0];
     if (primary !== current) {
       current = primary;
