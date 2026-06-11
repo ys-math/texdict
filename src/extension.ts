@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { DICTIONARY, FACETS, Entry } from "./dictionary";
+import { TexDictViewProvider } from "./panel";
 
 // A QuickPick item that also carries the LaTeX command to insert.
 interface SymbolItem extends vscode.QuickPickItem {
@@ -21,7 +22,7 @@ function toSymbolItem(e: Entry): SymbolItem {
   return {
     label: `${glyph}${e.command}`,
     description: `${e.name}   ${keywords}`.trim(),
-    detail: e.tags.join(", "),
+    detail: e.tags.join(", ") + (e.pkg ? ` · needs ${e.pkg}` : ""),
     insertText: e.command,
   };
 }
@@ -72,6 +73,16 @@ async function pickFilterTags(active: string[]): Promise<string[] | undefined> {
     return undefined;
   }
   return chosen.map((c) => c.tag!).filter(Boolean);
+}
+
+// Convert a command into a snippet body: each empty `{}` pair becomes a tab
+// stop so the cursor lands inside (e.g. "\\mathbb{}" -> "\\mathbb{$1}",
+// "\\frac{}{}" -> "\\frac{$1}{$2}"). Backslashes/dollars are escaped first so
+// the literal LaTeX survives the snippet parser.
+function toSnippet(command: string): string {
+  let n = 0;
+  const escaped = command.replace(/\\/g, "\\\\").replace(/\$/g, "\\$");
+  return escaped.replace(/\{\}/g, () => `{$${++n}}`);
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -142,9 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (picked && "insertText" in picked) {
         const text = (picked as SymbolItem).insertText;
         if (editor) {
-          editor.edit((builder) => {
-            builder.insert(editor.selection.active, text);
-          });
+          editor.insertSnippet(new vscode.SnippetString(toSnippet(text)));
         } else {
           await vscode.env.clipboard.writeText(text);
           vscode.window.showInformationMessage(`TeXDict: copied ${text} to clipboard.`);
@@ -166,6 +175,34 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(disposable);
+
+  // --- Typeset symbol palette (Webview view) ---
+  // Clicking the palette steals focus from the editor, so activeTextEditor
+  // becomes undefined. We remember the last real editor and insert into that.
+  let lastEditor = vscode.window.activeTextEditor;
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((e) => {
+      if (e) {
+        lastEditor = e;
+      }
+    })
+  );
+
+  const insert = async (text: string) => {
+    if (lastEditor) {
+      await lastEditor.insertSnippet(new vscode.SnippetString(toSnippet(text)));
+    } else {
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.showInformationMessage(`TeXDict: copied ${text} to clipboard.`);
+    }
+  };
+
+  const provider = new TexDictViewProvider(context.extensionUri, insert);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(TexDictViewProvider.viewType, provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+    })
+  );
 }
 
 export function deactivate() {}

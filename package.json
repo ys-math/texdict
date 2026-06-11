@@ -2,7 +2,7 @@
   "name": "texdict",
   "displayName": "TeXDict",
   "description": "Search a LaTeX command by its concept name and insert it at the cursor.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "yutosasaki",
   "license": "MIT",
   "repository": {
@@ -41,11 +41,33 @@
           ".tex"
         ]
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "texdict",
+          "title": "TeXDict",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "texdict": [
+        {
+          "id": "texdict.palette",
+          "name": "Symbols",
+          "type": "webview"
+        }
+      ]
+    }
   },
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "compile": "tsc -p ./ && node scripts/copy-katex.js",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "katex": "^0.16.47"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

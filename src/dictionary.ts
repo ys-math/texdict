@@ -2,10 +2,12 @@
 // extension.ts. To grow the dictionary, you only ever edit this file.
 
 export interface Entry {
-  command: string;     // what we insert, e.g. "\\int"
+  command: string;     // what we insert, e.g. "\\int"; empty {} become snippet tab stops
   name: string;        // primary human name, e.g. "integral"
   tags: string[];      // domains/types it belongs to — MANY-to-many
   symbol?: string;     // unicode preview shown in the list, e.g. "∫"
+  example?: string;    // LaTeX rendered as a PREVIEW instead of `command` (e.g. font samples)
+  pkg?: string;        // required non-standard LaTeX package (beyond amsmath/amssymb)
   keywords?: string[]; // extra free-text search terms
 }
 
@@ -25,13 +27,16 @@ export const FACETS: { name: string; tags: string[] }[] = [
   {
     name: "Symbol types",
     tags: [
-      "accent", "arrow", "big operator", "bracket", "operation", "operator",
-      "quantifier", "relation", "structure",
+      "accent", "arrow", "big operator", "bracket", "font", "operation",
+      "operator", "quantifier", "relation", "structure",
     ],
   },
   {
     name: "Character class",
-    tags: ["blackboard", "fraktur", "greek", "hebrew", "script"],
+    tags: [
+      "blackboard", "bold", "calligraphic", "fraktur", "greek", "hebrew",
+      "monospace", "roman", "sans-serif", "script",
+    ],
   },
 ];
 
@@ -112,7 +117,7 @@ export const DICTIONARY: Entry[] = [
   // ── Structures ───────────────────────────────────────────────────────
   { command: "\\frac{}{}", name: "fraction", tags: ["structure"], symbol: "½", keywords: ["over divide"] },
   { command: "\\sqrt{}", name: "square root", tags: ["structure"], symbol: "√", keywords: ["radical"] },
-  { command: "\\begin{pmatrix} \\end{pmatrix}", name: "matrix (parentheses)", tags: ["linear algebra", "structure"], symbol: "⎡⎤", keywords: ["pmatrix"] },
+  { command: "\\begin{pmatrix} \\end{pmatrix}", name: "matrix (parentheses)", tags: ["linear algebra", "structure"], symbol: "⎡⎤", example: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}", keywords: ["pmatrix"] },
 
   // ── Logic, Proof Theory & Modal ──────────────────────────────────────
   { command: "\\top", name: "top / true", tags: ["logic", "order theory"], symbol: "⊤", keywords: ["true", "verum", "tautology", "top element"] },
@@ -127,7 +132,7 @@ export const DICTIONARY: Entry[] = [
   { command: "\\blacksquare", name: "qed", tags: ["logic"], symbol: "∎", keywords: ["tombstone", "end of proof"] },
   { command: "\\Box", name: "necessarily / box", tags: ["logic"], symbol: "□", keywords: ["necessity", "modal"] },
   { command: "\\Diamond", name: "possibly / diamond", tags: ["logic"], symbol: "◇", keywords: ["possibility", "modal"] },
-  { command: "\\coloneqq", name: "is defined as", tags: ["logic", "relation"], symbol: "≔", keywords: ["definition", "assignment"] },
+  { command: "\\coloneqq", name: "is defined as", tags: ["logic", "relation"], symbol: "≔", pkg: "mathtools", keywords: ["definition", "assignment"] },
   { command: "\\triangleq", name: "defined as (triangle)", tags: ["relation"], symbol: "≜", keywords: ["defined to be"] },
   { command: "\\downarrow", name: "converges / defined", tags: ["logic", "arrow"], symbol: "↓", keywords: ["halts", "computability"] },
   { command: "\\uparrow", name: "diverges / undefined", tags: ["logic", "arrow"], symbol: "↑", keywords: ["does not halt", "computability"] },
@@ -220,9 +225,9 @@ export const DICTIONARY: Entry[] = [
   { command: "\\Vdash", name: "forces", tags: ["logic", "set theory", "relation"], symbol: "⊩", keywords: ["forcing", "strong turnstile"] },
   { command: "\\nvDash", name: "does not satisfy", tags: ["logic", "relation"], symbol: "⊭", keywords: ["not model", "countermodel"] },
   { command: "\\multimap", name: "linear implication / lollipop", tags: ["logic", "category theory", "arrow"], symbol: "⊸", keywords: ["lollipop", "linear logic", "left adjoint"] },
-  { command: "\\parr", name: "par", tags: ["logic", "operation"], symbol: "⅋", keywords: ["multiplicative disjunction", "linear logic"] },
-  { command: "\\lightning", name: "contradiction", tags: ["logic"], symbol: "↯", keywords: ["absurdity", "falsum", "bottom"] },
-  { command: "\\llbracket \\rrbracket", name: "semantic brackets", tags: ["logic", "bracket"], symbol: "⟦⟧", keywords: ["denotation", "oxford brackets", "interpretation", "list"] },
+  { command: "\\parr", name: "par", tags: ["logic", "operation"], symbol: "⅋", pkg: "stmaryrd", keywords: ["multiplicative disjunction", "linear logic"] },
+  { command: "\\lightning", name: "contradiction", tags: ["logic"], symbol: "↯", pkg: "stmaryrd", keywords: ["absurdity", "falsum", "bottom"] },
+  { command: "\\llbracket \\rrbracket", name: "semantic brackets", tags: ["logic", "bracket"], symbol: "⟦⟧", pkg: "stmaryrd", keywords: ["denotation", "oxford brackets", "interpretation", "list"] },
 
   // ── Big Operators ────────────────────────────────────────────────────
   { command: "\\bigcup", name: "n-ary union", tags: ["set theory", "big operator"], symbol: "⋃" },
@@ -277,7 +282,7 @@ export const DICTIONARY: Entry[] = [
 
   // ── Probability ──────────────────────────────────────────────────────
   { command: "\\perp\\!\\!\\!\\perp", name: "independent", tags: ["probability", "relation"], symbol: "⫫", keywords: ["statistical independence"] },
-  { command: "\\mathcal{N}", name: "normal distribution", tags: ["probability", "script"], symbol: "𝒩", keywords: ["gaussian", "distribution"] },
+  { command: "\\mathcal{N}", name: "normal distribution", tags: ["probability", "calligraphic"], symbol: "𝒩", keywords: ["gaussian", "distribution"] },
 
   // ── Geometry ─────────────────────────────────────────────────────────
   { command: "\\angle", name: "angle", tags: ["geometry"], symbol: "∠" },
@@ -294,8 +299,8 @@ export const DICTIONARY: Entry[] = [
 
   // ── Structures ───────────────────────────────────────────────────────
   { command: "\\binom{}{}", name: "binomial coefficient", tags: ["combinatorics", "structure"], keywords: ["choose", "combination", "n choose k"] },
-  { command: "\\begin{bmatrix} \\end{bmatrix}", name: "matrix (brackets)", tags: ["linear algebra", "structure"], symbol: "⎡⎤", keywords: ["bmatrix"] },
-  { command: "\\begin{cases} \\end{cases}", name: "cases / piecewise", tags: ["structure"], symbol: "{", keywords: ["piecewise"] },
+  { command: "\\begin{bmatrix} \\end{bmatrix}", name: "matrix (brackets)", tags: ["linear algebra", "structure"], symbol: "⎡⎤", example: "\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}", keywords: ["bmatrix"] },
+  { command: "\\begin{cases} \\end{cases}", name: "cases / piecewise", tags: ["structure"], symbol: "{", example: "f(x)=\\begin{cases} a & x>0 \\\\ b & x\\le 0 \\end{cases}", keywords: ["piecewise"] },
   { command: "\\cdots", name: "centered ellipsis", tags: ["structure"], symbol: "⋯", keywords: ["dots", "ellipsis"] },
   { command: "\\vdots", name: "vertical ellipsis", tags: ["structure"], symbol: "⋮", keywords: ["dots"] },
   { command: "\\ddots", name: "diagonal ellipsis", tags: ["structure"], symbol: "⋱", keywords: ["dots"] },
@@ -332,6 +337,12 @@ export const DICTIONARY: Entry[] = [
   { command: "\\psi", name: "psi", tags: ["greek"], symbol: "ψ" },
   { command: "\\varepsilon", name: "varepsilon", tags: ["greek"], symbol: "ε", keywords: ["epsilon"] },
   { command: "\\varphi", name: "varphi", tags: ["greek"], symbol: "ϕ", keywords: ["phi", "golden ratio"] },
+  { command: "\\vartheta", name: "vartheta", tags: ["greek"], symbol: "ϑ", keywords: ["theta"] },
+  { command: "\\varpi", name: "varpi", tags: ["greek"], symbol: "ϖ", keywords: ["pi"] },
+  { command: "\\varrho", name: "varrho", tags: ["greek"], symbol: "ϱ", keywords: ["rho"] },
+  { command: "\\varsigma", name: "varsigma / final sigma", tags: ["greek"], symbol: "ς", keywords: ["sigma"] },
+  { command: "\\varkappa", name: "varkappa", tags: ["greek"], symbol: "ϰ", keywords: ["kappa"] },
+  { command: "\\digamma", name: "digamma", tags: ["greek"], symbol: "ϝ" },
 
   // ── Greek Letters (uppercase) ────────────────────────────────────────
   { command: "\\Gamma", name: "capital gamma", tags: ["greek"], symbol: "Γ", keywords: ["gamma function"] },
@@ -346,10 +357,23 @@ export const DICTIONARY: Entry[] = [
   { command: "\\Omega", name: "capital omega", tags: ["greek"], symbol: "Ω", keywords: ["sample space", "big omega"] },
 
   // ── Script & Fraktur ─────────────────────────────────────────────────
-  { command: "\\mathcal{O}", name: "script o / big-o", tags: ["analysis", "script"], symbol: "𝒪", keywords: ["landau", "order of growth", "structure sheaf"] },
-  { command: "\\mathcal{P}", name: "power set", tags: ["set theory", "script"], symbol: "𝒫", keywords: ["powerset"] },
-  { command: "\\mathcal{F}", name: "script f / sigma-algebra", tags: ["probability", "script"], symbol: "ℱ", keywords: ["filtration", "sheaf", "family"] },
+  { command: "\\mathcal{O}", name: "calligraphic o / big-o", tags: ["analysis", "calligraphic"], symbol: "𝒪", keywords: ["landau", "order of growth", "structure sheaf"] },
+  { command: "\\mathcal{P}", name: "power set", tags: ["set theory", "calligraphic"], symbol: "𝒫", keywords: ["powerset"] },
+  { command: "\\mathcal{F}", name: "calligraphic f / sigma-algebra", tags: ["probability", "calligraphic"], symbol: "ℱ", keywords: ["filtration", "sheaf", "family"] },
   { command: "\\mathfrak{p}", name: "prime ideal", tags: ["algebra", "fraktur"], symbol: "𝔭" },
   { command: "\\mathfrak{m}", name: "maximal ideal", tags: ["algebra", "fraktur"], symbol: "𝔪" },
   { command: "\\mathfrak{g}", name: "lie algebra", tags: ["algebra", "fraktur"], symbol: "𝔤" },
+
+  // ── Math Fonts ───────────────────────────────────────────────────────
+  // One compact entry per font (instead of 26 letters each). The preview
+  // renders an ABC sample; inserting drops the cursor inside the braces (via a
+  // snippet), so you type your own letters.
+  { command: "\\mathbb{}", name: "blackboard bold (font)", tags: ["blackboard", "font"], symbol: "𝔸𝔹ℂ", example: "\\mathbb{ABC}", pkg: "amssymb", keywords: ["double struck", "alphabet", "letters"] },
+  { command: "\\mathfrak{}", name: "fraktur (font)", tags: ["fraktur", "font"], symbol: "𝔄𝔅ℭ", example: "\\mathfrak{ABC}", pkg: "amssymb", keywords: ["gothic", "alphabet", "letters"] },
+  { command: "\\mathcal{}", name: "calligraphic (font)", tags: ["calligraphic", "font"], symbol: "𝒜ℬ𝒞", example: "\\mathcal{ABC}", keywords: ["script", "alphabet", "letters"] },
+  { command: "\\mathscr{}", name: "script (font)", tags: ["script", "font"], symbol: "𝒜ℬ𝒞", example: "\\mathscr{ABC}", pkg: "mathrsfs", keywords: ["alphabet", "letters"] },
+  { command: "\\mathbf{}", name: "bold (font)", tags: ["bold", "font"], symbol: "𝐀𝐁𝐂", example: "\\mathbf{ABC}", keywords: ["boldface", "vector", "alphabet"] },
+  { command: "\\mathrm{}", name: "roman / upright (font)", tags: ["roman", "font"], symbol: "ABC", example: "\\mathrm{ABC}", keywords: ["upright", "text", "alphabet"] },
+  { command: "\\mathsf{}", name: "sans-serif (font)", tags: ["sans-serif", "font"], symbol: "𝖠𝖡𝖢", example: "\\mathsf{ABC}", keywords: ["category", "alphabet"] },
+  { command: "\\mathtt{}", name: "monospace (font)", tags: ["monospace", "font"], symbol: "𝙰𝙱𝙲", example: "\\mathtt{ABC}", keywords: ["typewriter", "code", "alphabet"] },
 ];
