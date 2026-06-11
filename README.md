@@ -2,26 +2,25 @@
 
 A LaTeX dictionary for mathematicians. Search a symbol by its concept name
 (e.g. *"integral"*, *"for all"*, *"reals"*) and insert the LaTeX command at your cursor —
-**263 symbols** across pure-math domains, all keyboard-driven.
+**277 symbols** across pure-math domains, by keyboard or click.
 
 ## Features
 
 - **Search by meaning** — type `integral` → insert `\int`, `tensor product` → `\otimes`,
   `reals` → `\mathbb{R}`. You don't need to remember the command, just the concept.
-- **Browse everything** — the picker shows all symbols by default, grouped under topic
-  headers. Each group header appears once.
-- **Filter by tag** — click the filter (funnel) button to narrow by faceted tags:
-  - **Subjects** — algebra, analysis, calculus, category theory, combinatorics, complex,
-    geometry, group theory, linear algebra, logic, number theory, order theory,
-    probability, set theory, topology
-  - **Symbol types** — accent, arrow, big operator, bracket, operation, operator,
-    quantifier, relation, structure
-  - **Character class** — blackboard, fraktur, greek, hebrew, script
-
-  Checking several tags filters with **AND** (a symbol must match all of them). A clear
-  button resets.
-- **LaTeX-format display** — each row shows the glyph and its command, e.g. `∫  \int`.
-- **Searchable on everything** — names, keywords, and tags all match as you type.
+- **Typeset symbol palette** — a side panel (Activity Bar) renders every symbol **typeset
+  with KaTeX** in a clickable grid; click one to insert it. Filter with one click using
+  **tag chips** grouped by facet (OR: click `greek` + `fraktur` to see both), plus a search box.
+- **QuickPick search + tag filter** — the `TeXDict: Search` command lists all symbols,
+  grouped by topic; the funnel button filters by tag (AND across checked tags).
+- **Faceted tags** — **Subjects** (algebra, analysis, calculus, …, topology),
+  **Symbol types** (accent, arrow, font, operation, relation, …), and **Character class**
+  (blackboard, bold, calligraphic, fraktur, greek, hebrew, monospace, roman, sans-serif, script).
+- **Compact font entries** — one entry per math font (`\mathbb{}`, `\mathfrak{}`, …) with an
+  `ABC` preview, instead of 26 letters each. Inserting drops your cursor inside the braces.
+- **Smart insertion** — empty `{}` become snippet tab stops (`\frac{}{}` → cursor in the
+  first slot).
+- **Package hints** — symbols needing a non-standard package show it (e.g. *needs `mathrsfs`*).
 - **Clipboard fallback** — with no editor open, the chosen command is copied to the clipboard.
 
 ## Install
@@ -30,7 +29,7 @@ Download the latest `texdict-*.vsix` from the
 [**Releases**](https://github.com/ys-math/texdict/releases) page, then either:
 
 ```bash
-code --install-extension texdict-0.0.3.vsix
+code --install-extension texdict-0.0.4.vsix
 ```
 
 or in VSCode: **Extensions panel → `…` menu → Install from VSIX…** → pick the file →
@@ -38,10 +37,10 @@ reload the window.
 
 ## Usage
 
+- **Palette:** click the **Σ TeXDict** icon in the Activity Bar → browse/filter the typeset
+  grid → click a symbol to insert it.
 - **Command Palette:** **"TeXDict: Search LaTeX Dictionary"** (available anywhere).
 - **Keyboard:** **`Ctrl+Alt+L`** (`Cmd+Alt+L` on macOS) — active in `.tex` / LaTeX files.
-
-Type to search, optionally click the funnel to filter by domain, press **Enter** to insert.
 
 > Note: a few symbols require LaTeX packages to render in your document (e.g. `\mathbb`,
 > `\mathfrak` → `amssymb`; `\coloneqq` → `mathtools`; `\llbracket` → `stmaryrd`).
@@ -49,9 +48,11 @@ Type to search, optionally click the funnel to filter by domain, press **Enter**
 ## Extending the dictionary
 
 Symbols live in `src/dictionary.ts` as a list of
-`{ command, name, tags, symbol?, keywords? }` entries. Add a row and recompile — the
-search and the tag filter re-derive themselves automatically. The only rule: **every tag
-you use must be listed in `FACETS`** (top of the same file), or it won't appear in the filter.
+`{ command, name, tags, symbol?, example?, pkg?, keywords? }` entries. Add a row and
+recompile — search, the palette, and the tag filter re-derive themselves automatically.
+The only rule: **every tag you use must be listed in `FACETS`** (top of the same file), or
+it won't appear in the filter. Use `example` to control the palette preview and `pkg` to
+flag a required non-standard LaTeX package.
 
 ## Development
 
