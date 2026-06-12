@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # 1. Clone the repo at the pushed tag.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # 2. Install Node.js.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
 
       # 3. Install deps from the lockfile, then build + package the .vsix.
       - run: npm ci
