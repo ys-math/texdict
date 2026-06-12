@@ -2,7 +2,7 @@
   "name": "texdict",
   "displayName": "TeXDict",
   "description": "Search a LaTeX command by its concept name and insert it at the cursor.",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "yutosasaki",
   "license": "MIT",
   "repository": {
@@ -21,6 +21,10 @@
       {
         "command": "texdict.search",
         "title": "TeXDict: Search LaTeX Dictionary"
+      },
+      {
+        "command": "texdict.saveTemplate",
+        "title": "TeXDict: Save Selection as Template"
       }
     ],
     "keybindings": [

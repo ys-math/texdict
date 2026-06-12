@@ -85,6 +85,25 @@ function toSnippet(command: string): string {
   return escaped.replace(/\{\}/g, () => `{$${++n}}`);
 }
 
+// Entries with a custom `snippet` (rich templates) insert it instead of the brace-fill.
+const byCommand = new Map(DICTIONARY.map((e) => [e.command, e] as const));
+
+// Build a SnippetString body from a custom template: escape backslashes/dollars for the
+// snippet parser, then convert tokens #{n:default} → ${n:default} and #n → $n.
+function customSnippet(body: string): string {
+  return body
+    .replace(/\\/g, "\\\\")
+    .replace(/\$/g, () => "\\$")
+    .replace(/#\{(\d+):([^}]*)\}/g, (_m, n, d) => "${" + n + ":" + d + "}")
+    .replace(/#(\d+)/g, (_m, n) => "$" + n);
+}
+
+// What to insert for a command: its custom snippet, else the brace-fill of the command.
+function snippetFor(command: string): string {
+  const entry = byCommand.get(command);
+  return entry?.snippet ? customSnippet(entry.snippet) : toSnippet(command);
+}
+
 export function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand("texdict.search", () => {
     // May be undefined if no file is focused — we handle that on accept by
@@ -153,7 +172,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (picked && "insertText" in picked) {
         const text = (picked as SymbolItem).insertText;
         if (editor) {
-          editor.insertSnippet(new vscode.SnippetString(toSnippet(text)));
+          editor.insertSnippet(new vscode.SnippetString(snippetFor(text)));
         } else {
           await vscode.env.clipboard.writeText(text);
           vscode.window.showInformationMessage(`TeXDict: copied ${text} to clipboard.`);
@@ -190,17 +209,65 @@ export function activate(context: vscode.ExtensionContext) {
 
   const insert = async (text: string) => {
     if (lastEditor) {
-      await lastEditor.insertSnippet(new vscode.SnippetString(toSnippet(text)));
+      await lastEditor.insertSnippet(new vscode.SnippetString(snippetFor(text)));
     } else {
       await vscode.env.clipboard.writeText(text);
       vscode.window.showInformationMessage(`TeXDict: copied ${text} to clipboard.`);
     }
   };
 
-  const provider = new TexDictViewProvider(context.extensionUri, insert);
+  // Insert a raw template body. Built-in templates use the #1/#{1:default}
+  // token convention (customSnippet); user templates are plain text, where
+  // empty {} pairs still become tab stops (toSnippet).
+  const insertBody = async (body: string, useTokens: boolean) => {
+    const snippet = useTokens ? customSnippet(body) : toSnippet(body);
+    if (lastEditor) {
+      await lastEditor.insertSnippet(new vscode.SnippetString(snippet));
+    } else {
+      await vscode.env.clipboard.writeText(body);
+      vscode.window.showInformationMessage("TeXDict: copied the template to the clipboard.");
+    }
+  };
+
+  const provider = new TexDictViewProvider(
+    context.extensionUri,
+    context.globalState,
+    insert,
+    insertBody
+  );
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(TexDictViewProvider.viewType, provider, {
       webviewOptions: { retainContextWhenHidden: true },
+    })
+  );
+
+  // Save the current editor selection as a user template (title + description
+  // via input boxes); it appears in the palette's Templates mode immediately.
+  context.subscriptions.push(
+    vscode.commands.registerCommand("texdict.saveTemplate", async () => {
+      const editor = vscode.window.activeTextEditor;
+      const body = editor ? editor.document.getText(editor.selection) : "";
+      if (!body.trim()) {
+        vscode.window.showWarningMessage("TeXDict: select some LaTeX in the editor first.");
+        return;
+      }
+      const title = await vscode.window.showInputBox({
+        prompt: "Template title",
+        placeHolder: "e.g. Homework header",
+        validateInput: (v) => (v.trim() ? undefined : "Title is required"),
+      });
+      if (!title) {
+        return;
+      }
+      const description = await vscode.window.showInputBox({
+        prompt: "Template description (optional)",
+        placeHolder: "What is it for? Any caveats?",
+      });
+      if (description === undefined) {
+        return; // Esc on the description cancels the whole save
+      }
+      await provider.addTemplate({ title: title.trim(), description: description.trim(), body });
+      vscode.window.showInformationMessage(`TeXDict: saved template "${title.trim()}".`);
     })
   );
 }

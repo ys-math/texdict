@@ -5,11 +5,13 @@ by its concept name (e.g. "integral" → `\int`) and insert it at the cursor.
 
 ## Status
 
-Phases 0–6 complete. Current version **0.0.4**, published to GitHub Releases via CI.
-Dictionary holds **277 symbols**. Two UIs: a **QuickPick** search command and a **Webview
-symbol palette** (Activity Bar) that renders symbols typeset with bundled KaTeX and offers
-clickable tag-chip filtering. Releases are automated by GitHub Actions on `v*` tag push
-(see "Release / CI").
+Phases 0–10 complete. Current version **0.0.5**, published to GitHub Releases via CI.
+Dictionary holds **368 entries** (277 symbols + 91 document commands). Two UIs: a
+**QuickPick** search command and a **three-mode Webview palette** (Activity Bar):
+`Symbols` (KaTeX grid + tag chips), `Document` (labeled command list with a hover
+**detail pane** of explanations), and `Templates` (built-in + user-saved templates with a
+rotating tips strip). Releases are automated by GitHub Actions on `v*` tag push (see
+"Release / CI").
 
 ## File structure
 
@@ -18,9 +20,12 @@ texdict/
 ├── .github/workflows/
 │   └── release.yml       — CI: build + publish .vsix to a GitHub Release on v* tag push
 ├── src/
-│   ├── extension.ts      — activation; QuickPick UI; snippet/clipboard insert; registers palette
-│   ├── panel.ts          — WebviewViewProvider: KaTeX symbol palette + tag chips
-│   └── dictionary.ts     — Entry[], FACETS, facetOf() — pure data, no VS Code imports
+│   ├── extension.ts      — activation; QuickPick UI; snippet/clipboard insert; saveTemplate command
+│   ├── panel.ts          — WebviewViewProvider: 3-mode palette; template storage (globalState)
+│   ├── dictionary.ts     — Entry[], FACETS, facetOf() — pure data, no VS Code imports
+│   ├── descriptions.ts   — DESCRIPTIONS: command → help text for the Document detail pane
+│   ├── templates.ts      — Template interface + BUILTIN_TEMPLATES (snippet-token bodies)
+│   └── tips.ts           — TIPS: LaTeX best-practice strings for the 💡 tip strip
 ├── scripts/
 │   └── copy-katex.js     — build step: copies KaTeX (js/css/woff2) into media/katex/
 ├── media/
@@ -52,6 +57,7 @@ interface Entry {
   symbol?:   string;    // unicode preview, e.g. "∫"
   example?:  string;    // LaTeX rendered as the palette preview instead of `command`
   pkg?:      string;    // required non-standard package (beyond amsmath/amssymb)
+  snippet?:  string;    // rich insert template; tokens: #1 tab stop, #{1:default}, #0 final
   keywords?: string[];  // extra search terms
 }
 
@@ -59,7 +65,7 @@ const FACETS: { name: string; tags: string[] }[]
 function facetOf(tag: string): string | undefined
 ```
 
-Three facets group every tag (each tag belongs to exactly one):
+Four facets group every tag (each tag belongs to exactly one):
 - **Subjects**: algebra, analysis, calculus, category theory, combinatorics, complex,
   geometry, group theory, linear algebra, logic, number theory, order theory,
   probability, set theory, topology
@@ -67,61 +73,81 @@ Three facets group every tag (each tag belongs to exactly one):
   quantifier, relation, structure
 - **Character class**: blackboard, bold, calligraphic, fraktur, greek, hebrew, monospace,
   roman, sans-serif, script
+- **Document**: preamble, page layout, sectioning, title, theorem, alignment, spacing,
+  table, text style, font size, reference, index
 
-`DICTIONARY` has **277 entries**. Math-font alphabets are **one compact entry per font**
-(`\mathbb{}`, `\mathfrak{}`, …, tagged `font`) with an `example` like `\mathbb{ABC}` — not
-26 letters each. Meaningful named ones (`\mathbb{R}`) and all Greek/Hebrew stay individual.
+`DICTIONARY` has **368 entries**: 277 math symbols + 91 document commands (entries whose
+tags fall in the Document facet — the palette partitions on this). Math-font alphabets are
+**one compact entry per font** (`\mathbb{}`, …, tagged `font`) with an `example` like
+`\mathbb{ABC}`. Structural document commands carry a `snippet` (e.g. `\begin{tabular}`
+inserts a full row/column skeleton).
 
-**To add symbols**: only edit `dictionary.ts`. The UI re-derives everything (including the
-tag filter) from `DICTIONARY` + `FACETS`. **Every tag used must exist in `FACETS`** — an
-unregistered tag won't appear in the filter and `facetOf()` returns `undefined`.
+**To add entries**: only edit `dictionary.ts`. The UI re-derives everything (including the
+tag filter and the Symbols/Document split) from `DICTIONARY` + `FACETS`. **Every tag used
+must exist in `FACETS`** — an unregistered tag won't appear in the filter and `facetOf()`
+returns `undefined`. Document commands should also get a `DESCRIPTIONS` entry.
+
+### `src/descriptions.ts`, `src/templates.ts`, `src/tips.ts` — auxiliary data
+
+- `DESCRIPTIONS: Record<string, string>` — keyed by the exact `command` string; 1–2
+  sentences (what it does + caveats + usage example) shown in the Document detail pane.
+  **Keep it covering all 91 document commands** (validate: every Document-facet command
+  has a key, no orphan keys).
+- `Template { id, title, description, body }` + `BUILTIN_TEMPLATES` (6 starters: article
+  skeleton, theorem setup, theorem+proof, figure, table, bibliography). Bodies use the
+  `#1` / `#{1:default}` / `#0` token convention — **no `{`/`}` inside placeholder defaults**
+  (the conversion regex can't nest).
+- `TIPS: string[]` — 15 best-practice tips, rendered with `textContent` (literal backslashes).
+
+All are pure data — never import `vscode` in them.
 
 ### `src/extension.ts` — command layer
-
-Key private types:
-
-```typescript
-interface SymbolItem extends vscode.QuickPickItem { insertText: string; }
-interface TagItem    extends vscode.QuickPickItem { tag?: string; }
-```
 
 Key functions:
 
 | Function | What it does |
 |---|---|
-| `toSymbolItem(e)` | Converts `Entry` → `SymbolItem`. label = `${symbol}  ${command}`, description = `${name}   ${keywords}`, detail = tags + `· needs ${pkg}` when set. |
-| `buildGroupedItems(entries)` | Sorts entries by `tags[0]` (so each header appears once), then groups them with `QuickPickItemKind.Separator` rows between primary-tag groups. |
-| `pickFilterTags(active)` | Opens a multi-select sub-picker grouped by FACET. Returns chosen tags, or `undefined` on Esc. |
-| `toSnippet(command)` | Turns empty `{}` into snippet tab stops (`\\frac{}{}` → `\\frac{$1}{$2}`) so the cursor lands inside; escapes `\\`/`$`. |
-| `activate(context)` | Registers `texdict.search` (QuickPick) AND the Webview palette provider; tracks the last active editor for palette inserts. |
+| `toSymbolItem(e)` | Converts `Entry` → QuickPick item. label = `${symbol}  ${command}`, description = name + keywords, detail = tags + `· needs ${pkg}`. |
+| `buildGroupedItems(entries)` | Sorts by `tags[0]`, groups with `QuickPickItemKind.Separator` rows. |
+| `pickFilterTags(active)` | Multi-select sub-picker grouped by FACET (AND filtering). |
+| `toSnippet(command)` | Empty `{}` → tab stops (`\\frac{}{}` → `\\frac{$1}{$2}`); escapes `\\`/`$`. |
+| `customSnippet(body)` | Converts `#{n:default}` → `${n:default}`, `#n` → `$n` after escaping — used for `Entry.snippet` and built-in templates. |
+| `snippetFor(command)` | `entry.snippet` via `customSnippet`, else `toSnippet(command)`. |
+| `activate(context)` | Registers `texdict.search`, `texdict.saveTemplate`, and the palette provider; tracks `lastEditor`. |
 
-**Filter logic**: AND-semantics — a symbol must match ALL checked tags.
+**Insert paths**: `insert(command)` (dictionary entries, via `snippetFor`) and
+`insertBody(body, useTokens)` (templates: built-ins → `customSnippet`, user templates →
+`toSnippet` plain text). Both fall back to the clipboard when no editor is open, and
+target `lastEditor` (tracked via `onDidChangeActiveTextEditor`, since clicking the panel
+steals focus).
 
-**Toolbar buttons**:
-- Filter button (`filter` ThemeIcon) — always shown; opens `pickFilterTags`.
-- Clear button (`clear-all` ThemeIcon) — shown only when `activeTags.length > 0`.
+**`texdict.saveTemplate`** ("TeXDict: Save Selection as Template"): takes the active
+selection, prompts for title (required) + description (Esc anywhere cancels), then
+`provider.addTemplate(...)`.
 
-**Picker lifecycle**: A `pickingTags` flag prevents `onDidHide` from disposing the main
-picker while the filter sub-picker is open. After the sub-picker resolves, `qp.show()`
-brings the main picker back.
+### `src/panel.ts` — Webview palette (3 modes)
 
-**Insert / clipboard fallback**: insertion uses `editor.insertSnippet(new SnippetString(toSnippet(cmd)))`
-so template braces become tab stops. If no editor is active, the command is copied to the
-clipboard with an info message.
+`TexDictViewProvider implements vscode.WebviewViewProvider` (viewType `texdict.palette`).
+Constructor: `(extensionUri, storage /* globalState Memento */, insert, insertBody)`.
 
-### `src/panel.ts` — Webview symbol palette
-
-`TexDictViewProvider implements vscode.WebviewViewProvider` (viewType `texdict.palette`)
-renders all symbols typeset with **bundled KaTeX** in a clickable grid, plus facet-grouped
-**tag chips** (OR filtering) and a search box. Clicking a symbol posts a message; the
-extension inserts it into the **last active editor** (tracked via `onDidChangeActiveTextEditor`,
-since clicking the panel removes editor focus). Key points:
-- KaTeX loads from `media/katex/` via `asWebviewUri`; a strict **CSP + nonce** gates scripts;
-  `localResourceRoots` is limited to `media/`; `retainContextWhenHidden` keeps the grid alive.
-- `previewLatex(e)` picks the render source: `example`, else the command with empty `{}`
-  filled by sample letters a,b,c (so `\frac{}{}` previews as `\frac{a}{b}`).
-- A cell falls back to the unicode glyph / command text if `katex.render` throws (e.g.
-  `\mathscr`, which needs mathrsfs).
+- **Layout**: body is a flex column — `#bar` (mode toggle + search + count), scrollable
+  `#views` (one div per mode), and `#doc-detail`, a **fixed-height (100px)** bottom pane
+  shown in Document and Templates modes. The fixed height is deliberate: a content-sized
+  pane resizes on every hover and makes the list above it jump.
+- **Symbols**: KaTeX grid; `previewLatex(e)` = `example`, else command with `{}` filled by
+  a, b, c…; fallback to unicode/command text if `katex.render` throws. Chips = OR filter.
+- **Document**: rows grouped by `tags[0]` under uppercase headers; hover → `showDetail(e)`
+  fills the pane from the `d` payload field (DESCRIPTIONS).
+- **Templates**: 💡 tip strip (random start, → cycles `TIPS`); BUILT-IN rows then MY
+  TEMPLATES with a `+ New` inline form and per-row ✕ delete. Hover → `showTplDetail(t)`
+  (title, description, body in a `<pre>`). Search filters by title+description.
+- **User-template storage**: globalState key `texdict.userTemplates` (`Template[]`, id =
+  `Date.now().toString(36)`). Initial list is embedded in the HTML; after `addTemplate`/
+  `removeTemplate` (modal confirm) the provider posts `{ type: 'templates', items }` and
+  the webview re-renders. Webview→extension messages: `insert`, `insertTemplate
+  { body, tokens }`, `saveTemplate { title, description, body }`, `deleteTemplate { id }`.
+- KaTeX loads from `media/katex/` via `asWebviewUri`; strict **CSP + nonce**;
+  `localResourceRoots` limited to `media/`; `retainContextWhenHidden` keeps state alive.
 
 ## `package.json` highlights
 
@@ -129,16 +155,17 @@ since clicking the panel removes editor focus). Key points:
 "main":       "./out/extension.js",
 "engines":    { "vscode": "^1.90.0" },
 "publisher":  "yutosasaki",
-"version":    "0.0.4",
+"version":    "0.0.5",
 "dependencies": { "katex": "^0.16.x" }
 ```
 
 Contributions:
-- **Command**: `texdict.search` — "TeXDict: Search LaTeX Dictionary"
-- **Keybinding**: `ctrl+alt+l` / `cmd+alt+l` (mac), active `when: editorLangId == latex`
+- **Commands**: `texdict.search` — "TeXDict: Search LaTeX Dictionary";
+  `texdict.saveTemplate` — "TeXDict: Save Selection as Template"
+- **Keybinding**: `ctrl+alt+l` / `cmd+alt+l` (mac) for `texdict.search`, `when: editorLangId == latex`
 - **Language mapping**: `.tex` → language id `latex`
 - **View container** (`viewsContainers.activitybar`: `texdict`) + **webview view**
-  (`views`: `texdict.palette`, type `webview`) — the symbol palette.
+  (`views`: `texdict.palette`, type `webview`) — the palette.
 
 Scripts: `compile` = `tsc -p ./ && node scripts/copy-katex.js`; `watch`; `vscode:prepublish`
 = `npm run compile` (so packaging bundles KaTeX). No test script.
@@ -158,18 +185,20 @@ Invoke the command via: **Cmd/Ctrl+Shift+P → "TeXDict: Search LaTeX Dictionary
 
 ## Conventions
 
-- **Data / logic separation**: dictionary data lives exclusively in `dictionary.ts`. All
-  VS Code API usage lives in `extension.ts`. Never import `vscode` in `dictionary.ts`.
+- **Data / logic separation**: dictionary/help/template/tip data live in their own files
+  with no `vscode` imports. All VS Code API usage lives in `extension.ts` / `panel.ts`.
 - **Command id prefix**: `texdict.*`.
 - **Language scope**: features are scoped to language id `latex` (mapped from `.tex`).
-- **QuickPick display format**: `${symbol}  ${command}` in `label`; name + keywords in
-  `description` (searchable via `matchOnDescription`); tags in `detail` (searchable via
-  `matchOnDetail`).
-- **Tag ordering in entries**: `tags[0]` is the primary grouping tag shown as a separator
-  header. Put the most specific/natural subject tag first.
+- **Snippet token convention**: `#1` tab stop, `#{1:default}` placeholder, `#0` final
+  cursor — converted by `customSnippet()`; raw `\`/`$` are escaped first, so author bodies
+  as literal LaTeX. No braces inside placeholder defaults.
+- **Tag ordering in entries**: `tags[0]` is the primary grouping tag shown as the
+  category header. Put the most specific/natural tag first.
+- **Webview JS style**: no template literals or `${}` inside the inline script (it sits in
+  a TS template literal); string concatenation + `textContent` (never innerHTML with data).
 - **TypeScript**: strict mode, ES2022, no `any`, no eslint (not configured).
 - **No comments on obvious code** — the existing inline comments document non-obvious
-  invariants (e.g. the `pickingTags` flag, the clipboard fallback rationale).
+  invariants (e.g. the fixed-height detail pane, the clipboard fallback rationale).
 
 ## Phases
 
@@ -182,6 +211,10 @@ Invoke the command via: **Cmd/Ctrl+Shift+P → "TeXDict: Search LaTeX Dictionary
 | 4 | Package as `.vsix` + publish | Done (CI-automated) |
 | 5 | Webview symbol palette (KaTeX) | Done |
 | 6 | Tag-chip filtering + font entries | Done |
+| 7 | 91 document commands + rich snippets | Done |
+| 8 | Palette redesign: Symbols/Document modes | Done |
+| 9 | Hover explanations (descriptions + detail pane) | Done |
+| 10 | Templates mode: tips, built-ins, user templates | Done |
 
 ## Release / CI
 
@@ -199,5 +232,5 @@ git push --follow-tags     # pushing the tag triggers the workflow → builds & 
 ```
 
 Notes:
-- Keep the `version` in `package.json` ahead of the installed one or `code --install-extension` won't replace it. `npm version` keeps `package-lock.json` in sync (required by `npm ci`).
+- Keep the `version` in `package.json` ahead of the installed one or `code --install-extension` won't replace it. `npm version` keeps `package-lock.json` in sync (required by `npm ci`). If the version was bumped by hand, run `npm install --package-lock-only` before committing.
 - A tag-triggered workflow added in the *same* push as its first tag may not fire (registration race); re-push the tag once. Subsequent tags trigger normally.

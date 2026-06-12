@@ -8,6 +8,7 @@ export interface Entry {
   symbol?: string;     // unicode preview shown in the list, e.g. "∫"
   example?: string;    // LaTeX rendered as a PREVIEW instead of `command` (e.g. font samples)
   pkg?: string;        // required non-standard LaTeX package (beyond amsmath/amssymb)
+  snippet?: string;    // custom insert template; tokens #1, #{1:default}, #0 (see extension.ts)
   keywords?: string[]; // extra free-text search terms
 }
 
@@ -36,6 +37,13 @@ export const FACETS: { name: string; tags: string[] }[] = [
     tags: [
       "blackboard", "bold", "calligraphic", "fraktur", "greek", "hebrew",
       "monospace", "roman", "sans-serif", "script",
+    ],
+  },
+  {
+    name: "Document",
+    tags: [
+      "preamble", "page layout", "sectioning", "title", "theorem", "alignment",
+      "spacing", "table", "text style", "font size", "reference", "index",
     ],
   },
 ];
@@ -376,4 +384,123 @@ export const DICTIONARY: Entry[] = [
   { command: "\\mathrm{}", name: "roman / upright (font)", tags: ["roman", "font"], symbol: "ABC", example: "\\mathrm{ABC}", keywords: ["upright", "text", "alphabet"] },
   { command: "\\mathsf{}", name: "sans-serif (font)", tags: ["sans-serif", "font"], symbol: "𝖠𝖡𝖢", example: "\\mathsf{ABC}", keywords: ["category", "alphabet"] },
   { command: "\\mathtt{}", name: "monospace (font)", tags: ["monospace", "font"], symbol: "𝙰𝙱𝙲", example: "\\mathtt{ABC}", keywords: ["typewriter", "code", "alphabet"] },
+
+  // ══ Document & text-formatting commands ══════════════════════════════
+  // Not math symbols: structural ones don't typeset (palette shows command
+  // text); multi-part ones carry a `snippet` (tokens #1, #{1:default}, #0).
+
+  // ── Preamble ─────────────────────────────────────────────────────────
+  { command: "\\documentclass{}", name: "document class", tags: ["preamble"], snippet: "\\documentclass{#{1:article}}", keywords: ["article", "report", "book"] },
+  { command: "\\usepackage{}", name: "use package", tags: ["preamble"], keywords: ["import", "library"] },
+  { command: "\\usepackage[]{}", name: "use package (with options)", tags: ["preamble"], snippet: "\\usepackage[#1]{#2}", keywords: ["options"] },
+  { command: "\\begin{document}", name: "document environment", tags: ["preamble"], snippet: "\\begin{document}\n\t#0\n\\end{document}", keywords: ["body"] },
+  { command: "\\input{}", name: "input file", tags: ["preamble"], keywords: ["include"] },
+  { command: "\\include{}", name: "include file", tags: ["preamble"], keywords: ["chapter"] },
+
+  // ── Page layout ──────────────────────────────────────────────────────
+  { command: "\\geometry{}", name: "page geometry", tags: ["page layout"], pkg: "geometry", snippet: "\\geometry{#{1:margin=1in}}", keywords: ["margins"] },
+  { command: "\\newpage", name: "new page", tags: ["page layout"], keywords: ["break"] },
+  { command: "\\clearpage", name: "clear page", tags: ["page layout"], keywords: ["flush floats"] },
+  { command: "\\pagestyle{}", name: "page style", tags: ["page layout"], snippet: "\\pagestyle{#{1:plain}}", keywords: ["header", "footer"] },
+  { command: "\\pagenumbering{}", name: "page numbering", tags: ["page layout"], snippet: "\\pagenumbering{#{1:roman}}", keywords: ["arabic", "roman"] },
+  { command: "\\setlength{}{}", name: "set length", tags: ["page layout"], keywords: ["margin", "dimension"] },
+
+  // ── Sectioning ───────────────────────────────────────────────────────
+  { command: "\\section{}", name: "section", tags: ["sectioning"], keywords: ["heading"] },
+  { command: "\\subsection{}", name: "subsection", tags: ["sectioning"] },
+  { command: "\\subsubsection{}", name: "subsubsection", tags: ["sectioning"] },
+  { command: "\\chapter{}", name: "chapter", tags: ["sectioning"], keywords: ["book", "report"] },
+  { command: "\\paragraph{}", name: "paragraph heading", tags: ["sectioning"] },
+  { command: "\\section*{}", name: "unnumbered section", tags: ["sectioning"], snippet: "\\section*{#1}", keywords: ["starred"] },
+  { command: "\\tableofcontents", name: "table of contents", tags: ["sectioning"], keywords: ["toc"] },
+  { command: "\\appendix", name: "appendix", tags: ["sectioning"] },
+
+  // ── Title ────────────────────────────────────────────────────────────
+  { command: "\\title{}", name: "title", tags: ["title"] },
+  { command: "\\author{}", name: "author", tags: ["title"] },
+  { command: "\\date{}", name: "date", tags: ["title"], snippet: "\\date{#{1:\\today}}" },
+  { command: "\\maketitle", name: "make title", tags: ["title"], keywords: ["render title"] },
+  { command: "\\today", name: "today's date", tags: ["title"], keywords: ["date"] },
+  { command: "\\thanks{}", name: "thanks (title footnote)", tags: ["title"], keywords: ["acknowledgement"] },
+
+  // ── Theorem & remarks ────────────────────────────────────────────────
+  { command: "\\begin{theorem}", name: "theorem", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{theorem}\n\t#0\n\\end{theorem}" },
+  { command: "\\begin{lemma}", name: "lemma", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{lemma}\n\t#0\n\\end{lemma}" },
+  { command: "\\begin{corollary}", name: "corollary", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{corollary}\n\t#0\n\\end{corollary}" },
+  { command: "\\begin{definition}", name: "definition", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{definition}\n\t#0\n\\end{definition}" },
+  { command: "\\begin{remark}", name: "remark", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{remark}\n\t#0\n\\end{remark}" },
+  { command: "\\begin{proof}", name: "proof", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{proof}\n\t#0\n\\end{proof}" },
+  { command: "\\newtheorem{}{}", name: "declare theorem", tags: ["theorem"], pkg: "amsthm", snippet: "\\newtheorem{#1}{#2}", keywords: ["define environment"] },
+  { command: "\\footnote{}", name: "footnote", tags: ["theorem"], keywords: ["note"] },
+  { command: "\\marginpar{}", name: "margin note", tags: ["theorem"], keywords: ["margin"] },
+
+  // ── Alignment ────────────────────────────────────────────────────────
+  { command: "\\begin{center}", name: "center environment", tags: ["alignment"], snippet: "\\begin{center}\n\t#0\n\\end{center}" },
+  { command: "\\begin{flushleft}", name: "flush left", tags: ["alignment"], snippet: "\\begin{flushleft}\n\t#0\n\\end{flushleft}", keywords: ["left align"] },
+  { command: "\\begin{flushright}", name: "flush right", tags: ["alignment"], snippet: "\\begin{flushright}\n\t#0\n\\end{flushright}", keywords: ["right align"] },
+  { command: "\\centering", name: "centering", tags: ["alignment"], keywords: ["center"] },
+  { command: "\\raggedright", name: "ragged right (left align)", tags: ["alignment"] },
+  { command: "\\raggedleft", name: "ragged left (right align)", tags: ["alignment"] },
+
+  // ── Spacing ──────────────────────────────────────────────────────────
+  { command: "\\quad", name: "quad space", tags: ["spacing"], keywords: ["space"] },
+  { command: "\\qquad", name: "double quad space", tags: ["spacing"], keywords: ["space"] },
+  { command: "\\,", name: "thin space", tags: ["spacing"], keywords: ["thinspace"] },
+  { command: "\\;", name: "medium space", tags: ["spacing"], keywords: ["space"] },
+  { command: "\\!", name: "negative thin space", tags: ["spacing"], keywords: ["negative space"] },
+  { command: "\\hspace{}", name: "horizontal space", tags: ["spacing"], snippet: "\\hspace{#{1:1cm}}" },
+  { command: "\\vspace{}", name: "vertical space", tags: ["spacing"], snippet: "\\vspace{#{1:1cm}}" },
+  { command: "\\\\", name: "line break", tags: ["spacing"], keywords: ["newline", "new line"] },
+  { command: "\\newline", name: "new line", tags: ["spacing"], keywords: ["break"] },
+  { command: "\\smallskip", name: "small vertical skip", tags: ["spacing"] },
+  { command: "\\medskip", name: "medium vertical skip", tags: ["spacing"] },
+  { command: "\\bigskip", name: "big vertical skip", tags: ["spacing"] },
+  { command: "\\noindent", name: "no indent", tags: ["spacing"], keywords: ["paragraph"] },
+  { command: "\\hfill", name: "horizontal fill", tags: ["spacing"], keywords: ["push"] },
+  { command: "\\vfill", name: "vertical fill", tags: ["spacing"] },
+
+  // ── Tables ───────────────────────────────────────────────────────────
+  { command: "\\begin{tabular}", name: "tabular", tags: ["table"], snippet: "\\begin{tabular}{#{1:c c}}\n\t#2 & #3 \\\\\n\\end{tabular}", keywords: ["table grid"] },
+  { command: "\\begin{table}", name: "table (float)", tags: ["table"], snippet: "\\begin{table}[#{1:htbp}]\n\t\\centering\n\t#2\n\t\\caption{#3}\n\t\\label{tab:#4}\n\\end{table}", keywords: ["float"] },
+  { command: "\\begin{array}", name: "array (math)", tags: ["table"], snippet: "\\begin{array}{#{1:cc}}\n\t#2 & #3 \\\\\n\\end{array}", keywords: ["matrix"] },
+  { command: "\\hline", name: "horizontal line", tags: ["table"], keywords: ["rule"] },
+  { command: "\\cline{}", name: "partial horizontal line", tags: ["table"], snippet: "\\cline{#{1:1-2}}" },
+  { command: "\\multicolumn{}{}{}", name: "multicolumn cell", tags: ["table"], snippet: "\\multicolumn{#1}{#{2:c}}{#3}", keywords: ["span columns"] },
+  { command: "\\caption{}", name: "caption", tags: ["table"], keywords: ["figure", "label"] },
+
+  // ── Text style ───────────────────────────────────────────────────────
+  { command: "\\textbf{}", name: "bold text", tags: ["text style"], example: "\\textbf{abc}", keywords: ["boldface"] },
+  { command: "\\textit{}", name: "italic text", tags: ["text style"], example: "\\textit{abc}", keywords: ["italics"] },
+  { command: "\\emph{}", name: "emphasis", tags: ["text style"], example: "\\textit{abc}", keywords: ["italic emphasize"] },
+  { command: "\\underline{}", name: "underline", tags: ["text style"], example: "\\underline{abc}" },
+  { command: "\\texttt{}", name: "typewriter text", tags: ["text style"], example: "\\texttt{abc}", keywords: ["monospace code"] },
+  { command: "\\textsf{}", name: "sans-serif text", tags: ["text style"], example: "\\textsf{abc}" },
+  { command: "\\textsc{}", name: "small caps", tags: ["text style"], keywords: ["smallcaps"] },
+  { command: "\\textrm{}", name: "roman text", tags: ["text style"], example: "\\textrm{abc}", keywords: ["upright"] },
+  { command: "\\text{}", name: "text in math mode", tags: ["text style"], example: "\\text{abc}", keywords: ["mbox"] },
+
+  // ── Font size ────────────────────────────────────────────────────────
+  { command: "\\tiny", name: "tiny", tags: ["font size"] },
+  { command: "\\scriptsize", name: "script size", tags: ["font size"] },
+  { command: "\\footnotesize", name: "footnote size", tags: ["font size"] },
+  { command: "\\small", name: "small", tags: ["font size"] },
+  { command: "\\normalsize", name: "normal size", tags: ["font size"] },
+  { command: "\\large", name: "large", tags: ["font size"] },
+  { command: "\\Large", name: "Large", tags: ["font size"] },
+  { command: "\\LARGE", name: "LARGE", tags: ["font size"] },
+  { command: "\\huge", name: "huge", tags: ["font size"] },
+  { command: "\\Huge", name: "Huge", tags: ["font size"] },
+
+  // ── References ───────────────────────────────────────────────────────
+  { command: "\\label{}", name: "label", tags: ["reference"], keywords: ["anchor"] },
+  { command: "\\ref{}", name: "reference", tags: ["reference"], keywords: ["cross reference"] },
+  { command: "\\eqref{}", name: "equation reference", tags: ["reference"], pkg: "amsmath", keywords: ["equation"] },
+  { command: "\\pageref{}", name: "page reference", tags: ["reference"] },
+  { command: "\\cite{}", name: "citation", tags: ["reference"], keywords: ["bibliography"] },
+  { command: "\\bibliography{}", name: "bibliography", tags: ["reference"], keywords: ["references"] },
+
+  // ── Index ────────────────────────────────────────────────────────────
+  { command: "\\index{}", name: "index entry", tags: ["index"], pkg: "makeidx" },
+  { command: "\\makeindex", name: "make index", tags: ["index"], pkg: "makeidx", keywords: ["preamble"] },
+  { command: "\\printindex", name: "print index", tags: ["index"], pkg: "makeidx" },
 ];
