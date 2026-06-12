@@ -19,9 +19,10 @@ by keyboard or click.
     display environments, lists, figures, tables, links & colors, references, index…)
     grouped by category. **Hovering a row shows an explanation** — what it does, caveats,
     and a usage example — in a **resizable** detail pane (drag its top edge).
-  - **Templates** — 8 built-in starters (article skeleton, theorem setup, figure, table,
-    bibliography, macro pack, book format…) plus **your own saved templates**, with a
-    rotating 💡 strip of LaTeX best-practice tips.
+  - **Templates** — 11 built-in starters (article skeleton, journal article (amsart),
+    book format, theorem setup, commutative diagrams — tikz-cd square and a 3D TikZ
+    cube —, figure, table, bibliography, macro pack…) plus **your own saved templates**,
+    with a rotating 💡 strip of LaTeX best-practice tips.
   - **Packages** — a reference of 32 common packages (amsmath, hyperref, tikz, booktabs…)
     with what each does and a gotcha tip; clicking inserts the typical `\usepackage` line.
 - **Save your own templates** — click **+ New** in the palette, or select LaTeX in the
@@ -41,7 +42,7 @@ Download the latest `texdict-*.vsix` from the
 [**Releases**](https://github.com/ys-math/texdict/releases) page, then either:
 
 ```bash
-code --install-extension texdict-0.0.6.vsix
+code --install-extension texdict-0.0.7.vsix
 ```
 
 or in VSCode: **Extensions panel → `…` menu → Install from VSIX…** → pick the file →

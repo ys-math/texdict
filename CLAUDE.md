@@ -5,11 +5,11 @@ by its concept name (e.g. "integral" → `\int`) and insert it at the cursor.
 
 ## Status
 
-Phases 0–12 complete. Current version **0.0.6**, published to GitHub Releases via CI.
+Phases 0–13 complete. Current version **0.0.7**, published to GitHub Releases via CI.
 Dictionary holds **533 entries** (412 symbols + 121 document commands). Two UIs: a
 **QuickPick** search command and a **four-mode Webview palette** (Activity Bar):
 `Symbols` (grouped KaTeX grid with a RECENT section + tag chips), `Document` (command
-list with hover explanations), `Templates` (8 built-in + user-saved templates + tips
+list with hover explanations), `Templates` (11 built-in + user-saved templates + tips
 strip), `Packages` (32-package reference). The explanation pane is user-resizable.
 Releases are automated by GitHub Actions on `v*` tag push (see "Release / CI").
 
@@ -24,7 +24,7 @@ texdict/
 │   ├── panel.ts          — WebviewViewProvider: 4-mode palette; globalState storage
 │   ├── dictionary.ts     — Entry[], FACETS, facetOf() — pure data, no VS Code imports
 │   ├── descriptions.ts   — DESCRIPTIONS: command → help text for the Document detail pane
-│   ├── templates.ts      — Template interface + BUILTIN_TEMPLATES (8; `plain` skips tokens)
+│   ├── templates.ts      — Template interface + BUILTIN_TEMPLATES (11; `plain` skips tokens)
 │   ├── packages.ts       — Pkg interface + PACKAGES (32) for the Packages tab
 │   └── tips.ts           — TIPS: LaTeX best-practice strings for the 💡 tip strip
 ├── scripts/
@@ -90,7 +90,7 @@ exist in `FACETS`**. Document commands should also get a `DESCRIPTIONS` entry.
 - `DESCRIPTIONS: Record<string, string>` — keyed by exact `command`; what it does +
   caveats + usage example, shown in the detail pane. **Must cover all 121 document
   commands** (no missing/orphan keys — validate after edits).
-- `Template { id, title, description, body, plain? }` + `BUILTIN_TEMPLATES` (8). Bodies
+- `Template { id, title, description, body, plain? }` + `BUILTIN_TEMPLATES` (11). Bodies
   use `#1` / `#{1:default}` / `#0` tokens — **no `{`/`}` inside placeholder defaults**.
   `plain: true` inserts the body literally (required when it contains LaTeX macro
   parameters like `#1`, e.g. the macro pack's `\newcommand` definitions).
@@ -155,7 +155,7 @@ Constructor: `(extensionUri, storage /* globalState */, insert, insertBody)`.
 "main":       "./out/extension.js",
 "engines":    { "vscode": "^1.90.0" },
 "publisher":  "yutosasaki",
-"version":    "0.0.6",
+"version":    "0.0.7",
 "dependencies": { "katex": "^0.16.x" }
 ```
 
@@ -207,6 +207,7 @@ covers all Document-facet commands, and all symbol previews render through
 | 10 | Templates mode: tips, built-ins, user templates | Done |
 | 11 | +135 symbols; grouped symbols grid | Done |
 | 12 | Recents, +30 commands, +2 templates, Packages tab, resizable pane, cell fit | Done |
+| 13 | Matrix snippets, tag/keyword audit, amsart + commutative-diagram templates | Done |
 
 ## Release / CI
 
