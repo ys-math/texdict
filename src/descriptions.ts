@@ -117,4 +117,42 @@ export const DESCRIPTIONS: Record<string, string> = {
   "\\index{}": "Marks a term for the index (needs makeidx + \\makeindex). e.g. \\index{matrix}",
   "\\makeindex": "Enables index collection; put it in the preamble (with makeidx). Pairs with \\printindex.",
   "\\printindex": "Prints the generated index, usually at the end of the document.",
+
+  // ── Math display ─────────────────────────────────────────────────────
+  "\\begin{equation}": "A single displayed, numbered equation. Don't put blank lines inside. Reference it with \\label + \\eqref.",
+  "\\begin{equation*}": "A displayed equation without a number (needs amsmath). Prefer this over $$…$$.",
+  "\\begin{align}": "Several equations aligned at the & marks (usually before =), each numbered; rows end with \\\\. e.g. align the = signs of a derivation.",
+  "\\begin{align*}": "Like align but with no equation numbers — the everyday choice for multi-line derivations.",
+  "\\begin{gather}": "Several displayed equations centered (not aligned), each numbered; rows end with \\\\.",
+  "\\begin{multline}": "One long equation broken across lines: first line left-aligned, last right-aligned, one number.",
+  "\\begin{split}": "Splits one numbered equation across aligned lines; must sit inside equation (or similar). One number for the whole block.",
+  "\\notag": "Suppresses the number of the current line in align/equation. e.g. x &= y \\notag \\\\",
+  "\\tag{}": "Replaces the automatic equation number with your own symbol. e.g. \\tag{$\\ast$}",
+
+  // ── Lists ────────────────────────────────────────────────────────────
+  "\\begin{itemize}": "A bulleted (unordered) list; each entry starts with \\item. Nest up to four levels.",
+  "\\begin{enumerate}": "A numbered (ordered) list; each entry starts with \\item. Use the enumitem package to customize numbering.",
+  "\\begin{description}": "A list of term–definition pairs: \\item[term] description. Good for notation lists.",
+  "\\item": "Starts one entry inside itemize/enumerate/description.",
+  "\\item[]": "A list entry with a custom label instead of the bullet/number. e.g. \\item[(a)] first case",
+  "\\begin{abstract}": "The paper's abstract, placed after \\maketitle (article class). Typeset in a narrower block.",
+  "\\begin{quote}": "An indented block for short quotations. Use quotation (with paragraph indents) for longer ones.",
+  "\\begin{verbatim}": "Prints its contents exactly as typed (monospace, no commands interpreted). For inline code use \\verb|…|.",
+  "\\begin{minipage}": "A box of fixed width that behaves like a mini page — put two side by side for parallel content. e.g. {0.45\\linewidth}",
+
+  // ── Figures ──────────────────────────────────────────────────────────
+  "\\includegraphics[]{}": "Inserts an image file (PDF/PNG/JPG; needs graphicx). Set the size in the options. e.g. \\includegraphics[width=0.8\\textwidth]{plot}",
+  "\\begin{figure}": "A floating container for images: \\centering + \\includegraphics + \\caption + \\label. Placement hint e.g. [htbp].",
+  "\\graphicspath{}": "Tells graphicx where to find images (note the double braces). Preamble. e.g. \\graphicspath{{figures/}}",
+  "\\begin{subfigure}": "One sub-image (with its own caption) inside a figure; put two side by side for (a)/(b) panels. Needs subcaption.",
+  "\\begin{wrapfigure}": "A figure that text wraps around: {r} or {l} side, then the width. Needs wrapfig; avoid near page breaks.",
+
+  // ── Links, colors & boxes ────────────────────────────────────────────
+  "\\url{}": "Typesets a URL in monospace with sensible line breaks, clickable with hyperref. e.g. \\url{https://arxiv.org}",
+  "\\href{}{}": "A clickable link with display text (needs hyperref): first the URL, then the text. e.g. \\href{https://…}{the paper}",
+  "\\textcolor{}{}": "Colors its second argument (needs xcolor): \\textcolor{red}{important}. Define colors with \\definecolor.",
+  "\\colorbox{}{}": "Puts its text on a colored background (needs xcolor). e.g. \\colorbox{yellow}{highlight}",
+  "\\fbox{}": "Draws a frame around its argument. e.g. \\fbox{boxed remark}",
+  "\\parbox{}{}": "A box of fixed width whose contents wrap like a paragraph: \\parbox{5cm}{text…}. For more control use minipage.",
+  "\\verb": "Inline verbatim: \\verb|…| prints the text between the delimiters exactly as typed. The delimiter can be any character not in the text.",
 };

@@ -105,6 +105,53 @@ function snippetFor(command: string): string {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  // --- Typeset palette (Webview view) --- created before the QuickPick so
+  // both insert paths can record recently-used symbols on the provider.
+  // Clicking the palette steals focus from the editor, so activeTextEditor
+  // becomes undefined. We remember the last real editor and insert into that.
+  let lastEditor = vscode.window.activeTextEditor;
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((e) => {
+      if (e) {
+        lastEditor = e;
+      }
+    })
+  );
+
+  const insert = async (text: string) => {
+    if (lastEditor) {
+      await lastEditor.insertSnippet(new vscode.SnippetString(snippetFor(text)));
+    } else {
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.showInformationMessage(`TeXDict: copied ${text} to clipboard.`);
+    }
+  };
+
+  // Insert a raw template body. Built-in templates use the #1/#{1:default}
+  // token convention (customSnippet); user templates and `plain` built-ins
+  // are inserted as-is, where empty {} pairs still become tab stops (toSnippet).
+  const insertBody = async (body: string, useTokens: boolean) => {
+    const snippet = useTokens ? customSnippet(body) : toSnippet(body);
+    if (lastEditor) {
+      await lastEditor.insertSnippet(new vscode.SnippetString(snippet));
+    } else {
+      await vscode.env.clipboard.writeText(body);
+      vscode.window.showInformationMessage("TeXDict: copied the template to the clipboard.");
+    }
+  };
+
+  const provider = new TexDictViewProvider(
+    context.extensionUri,
+    context.globalState,
+    insert,
+    insertBody
+  );
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(TexDictViewProvider.viewType, provider, {
+      webviewOptions: { retainContextWhenHidden: true },
+    })
+  );
+
   const disposable = vscode.commands.registerCommand("texdict.search", () => {
     // May be undefined if no file is focused — we handle that on accept by
     // falling back to the clipboard, so we no longer bail out here.
@@ -171,6 +218,7 @@ export function activate(context: vscode.ExtensionContext) {
       const picked = qp.selectedItems[0];
       if (picked && "insertText" in picked) {
         const text = (picked as SymbolItem).insertText;
+        void provider.recordRecent(text); // feeds the palette's RECENT section
         if (editor) {
           editor.insertSnippet(new vscode.SnippetString(snippetFor(text)));
         } else {
@@ -194,52 +242,6 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(disposable);
-
-  // --- Typeset symbol palette (Webview view) ---
-  // Clicking the palette steals focus from the editor, so activeTextEditor
-  // becomes undefined. We remember the last real editor and insert into that.
-  let lastEditor = vscode.window.activeTextEditor;
-  context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor((e) => {
-      if (e) {
-        lastEditor = e;
-      }
-    })
-  );
-
-  const insert = async (text: string) => {
-    if (lastEditor) {
-      await lastEditor.insertSnippet(new vscode.SnippetString(snippetFor(text)));
-    } else {
-      await vscode.env.clipboard.writeText(text);
-      vscode.window.showInformationMessage(`TeXDict: copied ${text} to clipboard.`);
-    }
-  };
-
-  // Insert a raw template body. Built-in templates use the #1/#{1:default}
-  // token convention (customSnippet); user templates are plain text, where
-  // empty {} pairs still become tab stops (toSnippet).
-  const insertBody = async (body: string, useTokens: boolean) => {
-    const snippet = useTokens ? customSnippet(body) : toSnippet(body);
-    if (lastEditor) {
-      await lastEditor.insertSnippet(new vscode.SnippetString(snippet));
-    } else {
-      await vscode.env.clipboard.writeText(body);
-      vscode.window.showInformationMessage("TeXDict: copied the template to the clipboard.");
-    }
-  };
-
-  const provider = new TexDictViewProvider(
-    context.extensionUri,
-    context.globalState,
-    insert,
-    insertBody
-  );
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(TexDictViewProvider.viewType, provider, {
-      webviewOptions: { retainContextWhenHidden: true },
-    })
-  );
 
   // Save the current editor selection as a user template (title + description
   // via input boxes); it appears in the palette's Templates mode immediately.

@@ -5,6 +5,9 @@ export interface Template {
   title: string;
   description: string;
   body: string;
+  // Insert the body literally (no #-token conversion). Required when the body
+  // contains LaTeX macro parameters like #1, e.g. \newcommand definitions.
+  plain?: boolean;
 }
 
 // Bodies use the snippet token convention from dictionary.ts: #1 = tab stop,
@@ -52,5 +55,20 @@ export const BUILTIN_TEMPLATES: Template[] = [
     description:
       "A hand-written bibliography with one \\bibitem; cite it with \\cite{key}. The {9} sets the label width (use {99} for 10+ entries).",
     body: "\\begin{thebibliography}{9}\n\n\\bibitem{#{1:key}}\n#{2:Author, Title, Publisher, Year.}\n\n\\end{thebibliography}",
+  },
+  {
+    id: "builtin-macros",
+    title: "Macro pack (preamble)",
+    description:
+      "Preamble shortcuts mathematicians keep redefining: \\R \\Z \\N \\Q \\C for the number sets, \\abs, \\norm, \\set, \\inner with auto-sizing delimiters, and a \\DeclareMathOperator example. Inserted literally — the #1 are macro parameters.",
+    plain: true,
+    body: "% number sets\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand{\\Z}{\\mathbb{Z}}\n\\newcommand{\\N}{\\mathbb{N}}\n\\newcommand{\\Q}{\\mathbb{Q}}\n\\newcommand{\\C}{\\mathbb{C}}\n% delimiters\n\\newcommand{\\abs}[1]{\\left\\lvert #1 \\right\\rvert}\n\\newcommand{\\norm}[1]{\\left\\lVert #1 \\right\\rVert}\n\\newcommand{\\set}[1]{\\left\\{ #1 \\right\\}}\n\\newcommand{\\inner}[2]{\\left\\langle #1, #2 \\right\\rangle}\n% upright operators\n\\DeclareMathOperator{\\im}{im}\n\\DeclareMathOperator{\\id}{id}",
+  },
+  {
+    id: "builtin-book",
+    title: "Text book format",
+    description:
+      "A book-class skeleton: front matter with title page and table of contents, main matter with part/chapter/section structure, and back matter for the bibliography.",
+    body: "\\documentclass[#{1:11pt}]{book}\n\\usepackage{amsmath, amssymb, amsthm}\n\n\\title{#{2:Title}}\n\\author{#{3:Author}}\n\\date{\\today}\n\n\\begin{document}\n\n\\frontmatter\n\\maketitle\n\\tableofcontents\n\n\\mainmatter\n\\part{#{4:Part One}}\n\\chapter{#{5:Introduction}}\n\\section{#{6:First section}}\n#0\n\n\\backmatter\n\\begin{thebibliography}{9}\n\\bibitem{key} Author, Title, Publisher, Year.\n\\end{thebibliography}\n\n\\end{document}",
   },
 ];

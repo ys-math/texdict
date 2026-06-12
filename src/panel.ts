@@ -3,9 +3,22 @@ import { DICTIONARY, FACETS, Entry } from "./dictionary";
 import { DESCRIPTIONS } from "./descriptions";
 import { BUILTIN_TEMPLATES, Template } from "./templates";
 import { TIPS } from "./tips";
+import { PACKAGES } from "./packages";
 
 // globalState key holding the user's saved templates (Template[]).
 const TEMPLATE_STORE_KEY = "texdict.userTemplates";
+// globalState key holding recently inserted symbol commands (string[], MRU first).
+const RECENTS_KEY = "texdict.recentSymbols";
+const RECENTS_MAX = 12;
+// globalState key holding the user-chosen height (px) of the detail pane.
+const DETAIL_HEIGHT_KEY = "texdict.detailHeight";
+const DETAIL_HEIGHT_DEFAULT = 100;
+
+// Only math symbols count as recents — document commands have their own views.
+const DOC_TAG_SET = new Set(FACETS.find((f) => f.name === "Document")?.tags ?? []);
+const SYMBOL_COMMANDS = new Set(
+  DICTIONARY.filter((e) => !e.tags.some((t) => DOC_TAG_SET.has(t))).map((e) => e.command)
+);
 
 // What to render as the palette preview: an explicit `example`, or the command
 // with empty `{}` slots filled by sample letters a, b, c… so structural commands
@@ -71,6 +84,21 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: "templates", items: this.userTemplates() });
   }
 
+  private recents(): string[] {
+    return this.storage.get<string[]>(RECENTS_KEY, []);
+  }
+
+  // Record an inserted symbol (called from the palette's insert message and
+  // the QuickPick accept) and push the updated list to the open palette.
+  async recordRecent(command: string): Promise<void> {
+    if (!SYMBOL_COMMANDS.has(command)) {
+      return;
+    }
+    const items = [command, ...this.recents().filter((c) => c !== command)].slice(0, RECENTS_MAX);
+    await this.storage.update(RECENTS_KEY, items);
+    this.view?.webview.postMessage({ type: "recents", items });
+  }
+
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
     view.webview.options = {
@@ -82,6 +110,7 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage(async (msg) => {
       if (msg?.type === "insert" && typeof msg.command === "string") {
         this.insert(msg.command);
+        await this.recordRecent(msg.command);
       } else if (msg?.type === "insertTemplate" && typeof msg.body === "string") {
         this.insertBody(msg.body, msg.tokens === true);
       } else if (
@@ -98,6 +127,8 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
         });
       } else if (msg?.type === "deleteTemplate" && typeof msg.id === "string") {
         await this.removeTemplate(msg.id);
+      } else if (msg?.type === "detailHeight" && typeof msg.value === "number") {
+        await this.storage.update(DETAIL_HEIGHT_KEY, Math.round(msg.value));
       }
     });
   }
@@ -131,10 +162,23 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       )
     );
 
+    // Section order for the grouped Symbols grid: most-used first — character
+    // classes (greek, hebrew, fonts), then symbol types, then subjects.
+    const subjects = FACETS.find((f) => f.name === "Subjects")?.tags ?? [];
+    const symbolTypes = (FACETS.find((f) => f.name === "Symbol types")?.tags ?? []).filter(
+      (t) => t !== "font" // the 8 font entries merge into one "fonts" group
+    );
+    const groupOrderData = JSON.stringify(["greek", "hebrew", "fonts", ...symbolTypes, ...subjects]);
+
     const builtinsData = JSON.stringify(BUILTIN_TEMPLATES);
-    // Initial snapshot only — later saves/deletes arrive via postMessage.
+    // Initial snapshots only — later changes arrive via postMessage.
     const userTplData = JSON.stringify(this.userTemplates());
+    const recentsData = JSON.stringify(this.recents());
     const tipsData = JSON.stringify(TIPS);
+    const packagesData = JSON.stringify(PACKAGES);
+    const detailHeightData = JSON.stringify(
+      this.storage.get<number>(DETAIL_HEIGHT_KEY, DETAIL_HEIGHT_DEFAULT)
+    );
 
     const csp = [
       `default-src 'none'`,
@@ -157,9 +201,13 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     #bar { flex: 0 0 auto; background: var(--vscode-sideBar-background); padding-bottom: 6px; }
     #views { flex: 1 1 auto; overflow-y: auto; }
     /* Fixed height (not max-height): the pane must never resize on hover, or
-       the list above it jumps while scrolling. Long text scrolls inside. */
-    #doc-detail { flex: 0 0 auto; display: none; height: 100px; margin-top: 6px; padding-top: 6px; overflow-y: auto;
-      box-sizing: border-box; border-top: 1px solid var(--vscode-panel-border, rgba(128,128,128,.35)); }
+       the list above it jumps while scrolling. Long text scrolls inside.
+       The height itself is user-adjustable by dragging #dd-resize. */
+    #doc-detail { flex: 0 0 auto; display: none; height: 100px; padding-top: 4px; overflow-y: auto;
+      box-sizing: border-box; }
+    #dd-resize { flex: 0 0 auto; display: none; height: 5px; margin-top: 4px; cursor: ns-resize;
+      border-top: 1px solid var(--vscode-panel-border, rgba(128,128,128,.35)); }
+    #dd-resize:hover, #dd-resize.dragging { border-top: 2px solid var(--vscode-focusBorder, #007fd4); }
     .dd-title { font-weight: 600; font-size: 12px; }
     .dd-pkg { font-size: 9px; font-style: italic; opacity: .6; margin-left: 6px; }
     .dd-cmd { font-family: var(--vscode-editor-font-family, monospace); font-size: 11px;
@@ -168,8 +216,8 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     .dd-hint { font-size: 11px; opacity: .5; }
     .dd-pre { margin: 4px 0 0; font-family: var(--vscode-editor-font-family, monospace); font-size: 10px;
       line-height: 1.4; white-space: pre-wrap; color: var(--vscode-textPreformat-foreground); }
-    #seg { display: flex; gap: 4px; margin-bottom: 6px; }
-    .seg { flex: 1; padding: 4px 8px; cursor: pointer; font-family: inherit; font-size: 12px;
+    #seg { display: flex; gap: 3px; margin-bottom: 6px; }
+    .seg { flex: 1; padding: 4px 2px; cursor: pointer; font-family: inherit; font-size: 11px;
       border: 1px solid var(--vscode-contrastBorder, transparent); border-radius: 4px;
       background: var(--vscode-button-secondaryBackground, var(--vscode-badge-background));
       color: var(--vscode-button-secondaryForeground, var(--vscode-foreground)); }
@@ -187,13 +235,13 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     .chip.active { background: var(--vscode-button-background); color: var(--vscode-button-foreground);
       opacity: 1; outline: 1px solid var(--vscode-focusBorder); }
     .chip.clear { background: transparent; color: var(--vscode-textLink-foreground); text-decoration: underline; }
-    /* Symbols grid */
-    #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 4px; margin-top: 6px; }
+    /* Symbols grid (one .grid per group section) */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 4px; margin-top: 2px; }
     .cell { display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 3px; padding: 6px 2px; min-height: 56px; overflow: hidden; cursor: pointer;
       border: 1px solid var(--vscode-panel-border, transparent); border-radius: 4px; }
     .cell:hover { background: var(--vscode-list-hoverBackground); }
-    .render { display: flex; align-items: center; min-height: 1.5em; }
+    .render { display: flex; align-items: center; min-height: 1.5em; transform-origin: center center; }
     .render.fallback { font-size: 1.4em; }
     .katex-display { margin: 0 !important; }
     .cap { font-size: 9px; opacity: .6; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -240,6 +288,7 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       <button id="seg-sym" class="seg active">Symbols</button>
       <button id="seg-doc" class="seg">Document</button>
       <button id="seg-tpl" class="seg">Templates</button>
+      <button id="seg-pkg" class="seg">Packages</button>
     </div>
     <input id="search" type="text" placeholder="Search symbols…" />
     <div id="count"></div>
@@ -248,7 +297,7 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
   <div id="views">
     <div id="symbols-view">
       <div id="sym-chips" class="chips"></div>
-      <div id="grid"></div>
+      <div id="sym-groups"></div>
     </div>
 
     <div id="document-view" style="display:none">
@@ -279,21 +328,54 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       </div>
       <div id="user-list"></div>
     </div>
+
+    <div id="packages-view" style="display:none">
+      <div id="pkg-list"></div>
+    </div>
   </div>
 
+  <div id="dd-resize" title="Drag to resize"></div>
   <div id="doc-detail"></div>
 
   <script nonce="${nonce}" src="${katexJs}"></script>
   <script nonce="${nonce}">
     const DICT = ${data};
     const FACETS = ${facetsData};
+    const GROUP_ORDER = ${groupOrderData};
     const BUILTINS = ${builtinsData};
     let USER_TPLS = ${userTplData};
+    let RECENTS = ${recentsData};
     const TIPS = ${tipsData};
+    const PKGS = ${packagesData};
     const vscode = acquireVsCodeApi();
     const search = document.getElementById('search');
     const count = document.getElementById('count');
     const docDetail = document.getElementById('doc-detail');
+    const ddResize = document.getElementById('dd-resize');
+
+    // Apply the saved pane height, and let the user drag the divider to
+    // adjust it (clamped); the final height is persisted via the extension.
+    docDetail.style.height = ${detailHeightData} + 'px';
+    let ddDragging = false, ddStartY = 0, ddStartH = 0;
+    ddResize.addEventListener('mousedown', function (ev) {
+      ddDragging = true;
+      ddStartY = ev.clientY;
+      ddStartH = docDetail.offsetHeight;
+      ddResize.classList.add('dragging');
+      ev.preventDefault();
+    });
+    window.addEventListener('mousemove', function (ev) {
+      if (!ddDragging) { return; }
+      const max = Math.round(window.innerHeight * 0.7);
+      const h = Math.max(48, Math.min(max, ddStartH + (ddStartY - ev.clientY)));
+      docDetail.style.height = h + 'px';
+    });
+    window.addEventListener('mouseup', function () {
+      if (!ddDragging) { return; }
+      ddDragging = false;
+      ddResize.classList.remove('dragging');
+      vscode.postMessage({ type: 'detailHeight', value: docDetail.offsetHeight });
+    });
 
     // ── Partition: math symbols vs document commands ────────────────────
     const docFacet = FACETS.filter(function (f) { return f.name === 'Document'; });
@@ -302,6 +384,8 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     const symbolDict = DICT.filter(function (e) { return !isDoc(e); });
     const docDict = DICT.filter(isDoc);
     const symbolFacets = FACETS.filter(function (f) { return f.name !== 'Document'; });
+    const DICT_BY_CMD = {};
+    DICT.forEach(function (e) { DICT_BY_CMD[e.c] = e; });
 
     function titleCase(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
@@ -352,6 +436,30 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       hint.textContent = 'Hover an item to see how to use it.';
       docDetail.appendChild(hint);
     }
+    // Same pane, for a package: name, the usepackage line, description, tip.
+    function showPkgDetail(p) {
+      docDetail.innerHTML = '';
+      const title = document.createElement('div');
+      title.className = 'dd-title';
+      title.textContent = p.name;
+      const cmd = document.createElement('div');
+      const code = document.createElement('code');
+      code.className = 'dd-cmd';
+      code.textContent = p.load;
+      cmd.appendChild(code);
+      const desc = document.createElement('div');
+      desc.className = 'dd-desc';
+      desc.textContent = p.description;
+      docDetail.appendChild(title);
+      docDetail.appendChild(cmd);
+      docDetail.appendChild(desc);
+      if (p.tip) {
+        const tip = document.createElement('div');
+        tip.className = 'dd-desc';
+        tip.textContent = '💡 ' + p.tip;
+        docDetail.appendChild(tip);
+      }
+    }
 
     // ── Reusable chip bar (OR filtering) ────────────────────────────────
     function buildChips(container, facets, activeTags, onChange) {
@@ -390,8 +498,8 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       container.appendChild(clearChip);
     }
 
-    // ── Symbols view (typeset grid) ─────────────────────────────────────
-    const grid = document.getElementById('grid');
+    // ── Symbols view (typeset grid, grouped by primary tag) ─────────────
+    const symGroupsEl = document.getElementById('sym-groups');
     const symActive = new Set();
 
     function makeCell(e) {
@@ -429,21 +537,97 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       return cell;
     }
 
-    const symCells = symbolDict.map(makeCell);
-    symCells.forEach(function (c) { grid.appendChild(c); });
+    // Scale down previews that are wider than their cell so nothing gets
+    // clipped (transform keeps the layout box, so row heights stay uniform).
+    function fitCell(cell) {
+      const r = cell.querySelector('.render');
+      if (!r) { return; }
+      r.style.transform = '';
+      const avail = cell.clientWidth - 6;
+      if (avail <= 0) { return; } // hidden view — measured again on setMode
+      const w = r.scrollWidth;
+      if (w > avail) { r.style.transform = 'scale(' + Math.max(0.45, avail / w) + ')'; }
+    }
+    function fitAllCells() {
+      requestAnimationFrame(function () {
+        const cells = document.querySelectorAll('#sym-groups .cell');
+        for (let i = 0; i < cells.length; i++) { fitCell(cells[i]); }
+      });
+    }
+    window.addEventListener('resize', fitAllCells);
+
+    // RECENT section: appended first so it sits above all groups. Shown only
+    // when there are recents AND no chip/search filter is active (it's a
+    // shortcut row, not part of filtering).
+    const recentHeader = document.createElement('div');
+    recentHeader.className = 'doc-cat';
+    recentHeader.textContent = 'RECENT';
+    const recentGrid = document.createElement('div');
+    recentGrid.className = 'grid';
+    symGroupsEl.appendChild(recentHeader);
+    symGroupsEl.appendChild(recentGrid);
+
+    function updateRecentVisibility() {
+      const vis = recentGrid.childElementCount > 0 && symActive.size === 0 && !search.value.trim();
+      recentHeader.style.display = vis ? '' : 'none';
+      recentGrid.style.display = vis ? '' : 'none';
+    }
+    function renderRecents() {
+      recentGrid.innerHTML = '';
+      RECENTS.forEach(function (c) {
+        const e = DICT_BY_CMD[c];
+        if (e) { recentGrid.appendChild(makeCell(e)); }
+      });
+      updateRecentVisibility();
+      fitAllCells();
+    }
+
+    // Group cells under headers: font entries merge into 'fonts'; everything
+    // else groups by its primary tag, in GROUP_ORDER (unknown groups appended).
+    const groupOf = function (e) { return e.t.indexOf('font') !== -1 ? 'fonts' : e.t[0]; };
+    const byGroup = {};
+    symbolDict.forEach(function (e) {
+      const g = groupOf(e);
+      (byGroup[g] = byGroup[g] || []).push(e);
+    });
+    const groupOrder = GROUP_ORDER.slice();
+    Object.keys(byGroup).forEach(function (g) {
+      if (groupOrder.indexOf(g) === -1) { groupOrder.push(g); }
+    });
+    const symGroups = [];
+    groupOrder.forEach(function (g) {
+      const entries = byGroup[g];
+      if (!entries) { return; }
+      const header = document.createElement('div');
+      header.className = 'doc-cat';
+      header.textContent = g.toUpperCase();
+      const gridEl = document.createElement('div');
+      gridEl.className = 'grid';
+      const cells = entries.map(makeCell);
+      cells.forEach(function (c) { gridEl.appendChild(c); });
+      symGroupsEl.appendChild(header);
+      symGroupsEl.appendChild(gridEl);
+      symGroups.push({ header: header, grid: gridEl, cells: cells });
+    });
+    fitAllCells();
 
     function applySymbolFilter() {
+      updateRecentVisibility();
       const q = search.value.trim().toLowerCase();
       const hasTags = symActive.size > 0;
       let shown = 0;
-      for (let i = 0; i < symCells.length; i++) {
-        const cell = symCells[i];
-        const tagMatch = !hasTags || cell._tags.some(function (t) { return symActive.has(t); });
-        const textMatch = !q || cell.dataset.q.indexOf(q) !== -1;
-        const vis = tagMatch && textMatch;
-        cell.style.display = vis ? '' : 'none';
-        if (vis) shown++;
-      }
+      symGroups.forEach(function (g) {
+        let groupShown = 0;
+        g.cells.forEach(function (cell) {
+          const tagMatch = !hasTags || cell._tags.some(function (t) { return symActive.has(t); });
+          const textMatch = !q || cell.dataset.q.indexOf(q) !== -1;
+          const vis = tagMatch && textMatch;
+          cell.style.display = vis ? '' : 'none';
+          if (vis) { groupShown++; shown++; }
+        });
+        g.header.style.display = groupShown ? '' : 'none';
+        g.grid.style.display = groupShown ? '' : 'none';
+      });
       if (mode === 'symbols') { count.textContent = shown + ' / ' + symbolDict.length + ' symbols'; }
     }
     buildChips(document.getElementById('sym-chips'), symbolFacets, symActive, applySymbolFilter);
@@ -559,7 +743,9 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       }
 
       row.addEventListener('click', function () {
-        vscode.postMessage({ type: 'insertTemplate', body: t.body, tokens: builtin });
+        // plain built-ins (e.g. the macro pack) contain literal LaTeX #1
+        // parameters — insert them without token conversion.
+        vscode.postMessage({ type: 'insertTemplate', body: t.body, tokens: builtin && !t.plain });
       });
       row.addEventListener('mouseenter', function () { showTplDetail(t); });
       return { el: row, q: (t.title + ' ' + t.description).toLowerCase() };
@@ -624,55 +810,116 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       clearForm();
     });
 
-    // Saves/deletes round-trip through the extension (globalState), which
-    // posts the authoritative list back here.
+    // ── Packages view (reference list grouped by category) ──────────────
+    const pkgList = document.getElementById('pkg-list');
+    const pkgGroups = [];
+    const pkgCats = [];
+    PKGS.forEach(function (p) { if (pkgCats.indexOf(p.category) === -1) { pkgCats.push(p.category); } });
+    pkgCats.forEach(function (cat) {
+      const header = document.createElement('div');
+      header.className = 'doc-cat';
+      header.textContent = cat.toUpperCase();
+      pkgList.appendChild(header);
+      const rows = [];
+      PKGS.filter(function (p) { return p.category === cat; }).forEach(function (p) {
+        const row = document.createElement('div');
+        row.className = 'doc-row';
+        row.title = p.name + ' — ' + p.description;
+        const name = document.createElement('code');
+        name.className = 'doc-cmd';
+        name.textContent = p.name;
+        row.appendChild(name);
+        row.addEventListener('click', function () {
+          vscode.postMessage({ type: 'insertTemplate', body: p.load, tokens: false });
+        });
+        row.addEventListener('mouseenter', function () { showPkgDetail(p); });
+        pkgList.appendChild(row);
+        rows.push({ el: row, q: (p.name + ' ' + p.category + ' ' + p.description).toLowerCase() });
+      });
+      pkgGroups.push({ header: header, rows: rows });
+    });
+
+    function applyPkgFilter() {
+      const q = search.value.trim().toLowerCase();
+      let shown = 0;
+      pkgGroups.forEach(function (g) {
+        let groupShown = 0;
+        g.rows.forEach(function (r) {
+          const vis = !q || r.q.indexOf(q) !== -1;
+          r.el.style.display = vis ? '' : 'none';
+          if (vis) { groupShown++; shown++; }
+        });
+        g.header.style.display = groupShown ? '' : 'none';
+      });
+      if (mode === 'packages') { count.textContent = shown + ' / ' + PKGS.length + ' packages'; }
+    }
+
+    // Saves/deletes/inserts round-trip through the extension (globalState),
+    // which posts the authoritative lists back here.
     window.addEventListener('message', function (ev) {
       const msg = ev.data;
       if (msg && msg.type === 'templates') {
         USER_TPLS = msg.items || [];
         renderUserList();
         applyTplFilter();
+      } else if (msg && msg.type === 'recents') {
+        RECENTS = msg.items || [];
+        renderRecents();
       }
     });
 
     // ── Mode toggle ─────────────────────────────────────────────────────
     let mode = 'symbols';
-    const segSym = document.getElementById('seg-sym');
-    const segDoc = document.getElementById('seg-doc');
-    const segTpl = document.getElementById('seg-tpl');
-    const symView = document.getElementById('symbols-view');
-    const docView = document.getElementById('document-view');
-    const tplView = document.getElementById('templates-view');
+    const segs = {
+      symbols: document.getElementById('seg-sym'),
+      document: document.getElementById('seg-doc'),
+      templates: document.getElementById('seg-tpl'),
+      packages: document.getElementById('seg-pkg'),
+    };
+    const views = {
+      symbols: document.getElementById('symbols-view'),
+      document: document.getElementById('document-view'),
+      templates: document.getElementById('templates-view'),
+      packages: document.getElementById('packages-view'),
+    };
+    const placeholders = {
+      symbols: 'Search symbols…',
+      document: 'Search document commands…',
+      templates: 'Search templates…',
+      packages: 'Search packages…',
+    };
+    const filters = {
+      symbols: applySymbolFilter,
+      document: applyDocFilter,
+      templates: applyTplFilter,
+      packages: applyPkgFilter,
+    };
 
     function setMode(m) {
       mode = m;
-      segSym.classList.toggle('active', m === 'symbols');
-      segDoc.classList.toggle('active', m === 'document');
-      segTpl.classList.toggle('active', m === 'templates');
-      symView.style.display = m === 'symbols' ? '' : 'none';
-      docView.style.display = m === 'document' ? '' : 'none';
-      tplView.style.display = m === 'templates' ? '' : 'none';
+      Object.keys(segs).forEach(function (k) {
+        segs[k].classList.toggle('active', k === m);
+        views[k].style.display = k === m ? '' : 'none';
+      });
       docDetail.style.display = m === 'symbols' ? 'none' : 'block';
-      search.placeholder = m === 'symbols' ? 'Search symbols…'
-        : m === 'document' ? 'Search document commands…' : 'Search templates…';
-      if (m === 'symbols') { applySymbolFilter(); }
-      else if (m === 'document') { applyDocFilter(); }
-      else { applyTplFilter(); }
+      ddResize.style.display = m === 'symbols' ? 'none' : 'block';
+      search.placeholder = placeholders[m];
+      filters[m]();
+      // Cells added while this view was hidden measured 0 wide — refit now.
+      if (m === 'symbols') { fitAllCells(); }
     }
-    segSym.addEventListener('click', function () { setMode('symbols'); });
-    segDoc.addEventListener('click', function () { setMode('document'); });
-    segTpl.addEventListener('click', function () { setMode('templates'); });
-    search.addEventListener('input', function () {
-      if (mode === 'symbols') { applySymbolFilter(); }
-      else if (mode === 'document') { applyDocFilter(); }
-      else { applyTplFilter(); }
+    Object.keys(segs).forEach(function (k) {
+      segs[k].addEventListener('click', function () { setMode(k); });
     });
+    search.addEventListener('input', function () { filters[mode](); });
 
     showDetailHint();
     showTip();
+    renderRecents();
     applySymbolFilter();
     applyDocFilter();
     applyTplFilter();
+    applyPkgFilter();
     setMode('symbols');
   </script>
 </body>
