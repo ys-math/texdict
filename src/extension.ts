@@ -90,11 +90,17 @@ const byCommand = new Map(DICTIONARY.map((e) => [e.command, e] as const));
 
 // Build a SnippetString body from a custom template: escape backslashes/dollars for the
 // snippet parser, then convert tokens #{n:default} → ${n:default} and #n → $n.
+// Defaults may contain ONE level of balanced braces (e.g. #{1:\tfrac{a}{b}});
+// `}` inside a default must be escaped for VSCode's parser, which otherwise
+// closes the placeholder at the first unescaped `}`.
 function customSnippet(body: string): string {
   return body
     .replace(/\\/g, "\\\\")
     .replace(/\$/g, () => "\\$")
-    .replace(/#\{(\d+):([^}]*)\}/g, (_m, n, d) => "${" + n + ":" + d + "}")
+    .replace(
+      /#\{(\d+):((?:[^{}]|\{[^{}]*\})*)\}/g,
+      (_m, n, d) => "${" + n + ":" + d.replace(/\}/g, "\\}") + "}"
+    )
     .replace(/#(\d+)/g, (_m, n) => "$" + n);
 }
 
@@ -180,7 +186,22 @@ export function activate(context: vscode.ExtensionContext) {
         activeTags.length === 0
           ? DICTIONARY
           : DICTIONARY.filter((e) => activeTags.every((t) => e.tags.includes(t)));
-      qp.items = buildGroupedItems(entries);
+      // Like the palette, lead with a "recent" section (last 12 insertions
+      // from any path) — but only in the unfiltered view.
+      const recentItems: vscode.QuickPickItem[] = [];
+      if (activeTags.length === 0) {
+        const recent = provider
+          .recents()
+          .map((c) => byCommand.get(c))
+          .filter((e): e is Entry => e !== undefined);
+        if (recent.length > 0) {
+          recentItems.push({ label: "recent", kind: vscode.QuickPickItemKind.Separator });
+          for (const e of recent) {
+            recentItems.push(toSymbolItem(e));
+          }
+        }
+      }
+      qp.items = [...recentItems, ...buildGroupedItems(entries)];
       qp.title =
         activeTags.length === 0
           ? `TeXDict — all symbols (${entries.length})`

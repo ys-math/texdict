@@ -5,11 +5,11 @@ by its concept name (e.g. "integral" → `\int`) and insert it at the cursor.
 
 ## Status
 
-Phases 0–13 complete. Current version **0.0.7**, published to GitHub Releases via CI.
-Dictionary holds **533 entries** (412 symbols + 121 document commands). Two UIs: a
+Phases 0–16 complete. Current version **0.0.7**, published to GitHub Releases via CI.
+Dictionary holds **578 entries** (457 symbols + 121 document commands). Two UIs: a
 **QuickPick** search command and a **four-mode Webview palette** (Activity Bar):
 `Symbols` (grouped KaTeX grid with a RECENT section + tag chips), `Document` (command
-list with hover explanations), `Templates` (11 built-in + user-saved templates + tips
+list with hover explanations), `Templates` (14 built-in + user-saved templates + tips
 strip), `Packages` (32-package reference). The explanation pane is user-resizable.
 Releases are automated by GitHub Actions on `v*` tag push (see "Release / CI").
 
@@ -24,7 +24,7 @@ texdict/
 │   ├── panel.ts          — WebviewViewProvider: 4-mode palette; globalState storage
 │   ├── dictionary.ts     — Entry[], FACETS, facetOf() — pure data, no VS Code imports
 │   ├── descriptions.ts   — DESCRIPTIONS: command → help text for the Document detail pane
-│   ├── templates.ts      — Template interface + BUILTIN_TEMPLATES (11; `plain` skips tokens)
+│   ├── templates.ts      — Template interface + BUILTIN_TEMPLATES (14; `plain` skips tokens)
 │   ├── packages.ts       — Pkg interface + PACKAGES (32) for the Packages tab
 │   └── tips.ts           — TIPS: LaTeX best-practice strings for the 💡 tip strip
 ├── scripts/
@@ -76,7 +76,7 @@ Four facets group every tag (each tag belongs to exactly one):
   alignment, spacing, list, table, figure, text style, font size, link & color,
   reference, index
 
-`DICTIONARY` has **533 entries**: 412 math symbols + 121 document commands (entries whose
+`DICTIONARY` has **578 entries**: 457 math symbols + 121 document commands (entries whose
 tags fall in the Document facet — the palette partitions on this). Math-font alphabets are
 **one compact entry per font** (`\mathbb{}`, …, tagged `font`). Structural commands carry
 a `snippet` (e.g. `\begin{align}` inserts an aligned two-row skeleton).
@@ -90,8 +90,8 @@ exist in `FACETS`**. Document commands should also get a `DESCRIPTIONS` entry.
 - `DESCRIPTIONS: Record<string, string>` — keyed by exact `command`; what it does +
   caveats + usage example, shown in the detail pane. **Must cover all 121 document
   commands** (no missing/orphan keys — validate after edits).
-- `Template { id, title, description, body, plain? }` + `BUILTIN_TEMPLATES` (11). Bodies
-  use `#1` / `#{1:default}` / `#0` tokens — **no `{`/`}` inside placeholder defaults**.
+- `Template { id, title, description, body, plain? }` + `BUILTIN_TEMPLATES` (14). Bodies
+  use `#1` / `#{1:default}` / `#0` tokens — defaults may contain **at most one level of balanced braces** (e.g. `#{1:\\tfrac{a}{b}}`); customSnippet() escapes `}` inside defaults because VSCode closes a placeholder at the first unescaped `}` (it does not brace-count).
   `plain: true` inserts the body literally (required when it contains LaTeX macro
   parameters like `#1`, e.g. the macro pack's `\newcommand` definitions).
 - `Pkg { name, category, description, load, tip? }` + `PACKAGES` (32) — the Packages tab;
@@ -186,7 +186,7 @@ covers all Document-facet commands, and all symbol previews render through
   `packages`, `tips`) never import `vscode`. API usage lives in `extension.ts`/`panel.ts`.
 - **Command id prefix**: `texdict.*`. Language scope: `latex`.
 - **Snippet token convention**: `#1`, `#{1:default}`, `#0` via `customSnippet()`; author
-  bodies as literal LaTeX; no braces inside placeholder defaults; use `plain: true` for
+  bodies as literal LaTeX; at most one level of balanced braces in placeholder defaults; use `plain: true` for
   bodies with literal `#1` macro parameters.
 - **Tag ordering**: `tags[0]` is the primary grouping tag (grid section / list category).
 - **Webview JS style**: no template literals or `${}` inside the inline script; string
@@ -208,6 +208,9 @@ covers all Document-facet commands, and all symbol previews render through
 | 11 | +135 symbols; grouped symbols grid | Done |
 | 12 | Recents, +30 commands, +2 templates, Packages tab, resizable pane, cell fit | Done |
 | 13 | Matrix snippets, tag/keyword audit, amsart + commutative-diagram templates | Done |
+| 14 | QuickPick recent section; limit/colimit symbols; exact-sequence + footnote-pack templates | Done |
+| 15 | Placeholder defaults for all 32 blank-argument symbols; 42 decorated operator variants in topic groups | Done |
+| 16 | WYSIWYG palette: every symbol button inserts exactly its rendered preview (60 entries aligned; token defaults allow one brace level) | Done |
 
 ## Release / CI
 

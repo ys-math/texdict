@@ -12,7 +12,7 @@ export interface Template {
 
 // Bodies use the snippet token convention from dictionary.ts: #1 = tab stop,
 // #{1:default} = placeholder, #0 = final cursor. Converted by customSnippet()
-// in extension.ts — so avoid { or } inside placeholder defaults.
+// in extension.ts — defaults may contain at most ONE level of balanced braces.
 export const BUILTIN_TEMPLATES: Template[] = [
   {
     id: "builtin-article",
@@ -139,5 +139,26 @@ export const BUILTIN_TEMPLATES: Template[] = [
     description:
       "The AMS article class used by most math journals: title block with address/email, MSC subject classification, keywords, abstract (placed before \\maketitle — the amsart convention), theorem setup, and a bibliography.",
     body: "\\documentclass[#{1:11pt}]{amsart}\n\\usepackage{amssymb, mathtools}\n\n\\newtheorem{theorem}{Theorem}[section]\n\\newtheorem{lemma}[theorem]{Lemma}\n\\newtheorem{corollary}[theorem]{Corollary}\n\\theoremstyle{definition}\n\\newtheorem{definition}[theorem]{Definition}\n\n\\title{#{2:Title}}\n\\author{#{3:Author}}\n\\address{#{4:Department, University, City}}\n\\email{#{5:author@university.edu}}\n\\subjclass[2020]{#{6:Primary 00A05}}\n\\keywords{#{7:keyword one, keyword two}}\n\n\\begin{document}\n\n\\begin{abstract}\n#{8:Abstract.}\n\\end{abstract}\n\n\\maketitle\n\n\\section{Introduction}\n#0\n\n\\begin{thebibliography}{9}\n\\bibitem{key} Author, Title, Journal, Year.\n\\end{thebibliography}\n\n\\end{document}",
+  },
+  {
+    id: "builtin-ses",
+    title: "Short exact sequence",
+    description:
+      "0 → A → B → C → 0 in tikz-cd (needs the tikz-cd package). Exactness means f is injective, g is surjective, and im f = ker g. Tab through the objects and the arrow labels; add decorations like hook or two heads to the \\arrow options.",
+    body: "\\begin{tikzcd}\n\t0 \\arrow[r] & #{1:A} \\arrow[r, \"#{2:f}\"] & #{3:B} \\arrow[r, \"#{4:g}\"] & #{5:C} \\arrow[r] & 0\n\\end{tikzcd}",
+  },
+  {
+    id: "builtin-les",
+    title: "Long exact sequence",
+    description:
+      "A two-row long exact sequence in tikz-cd (needs tikz-cd), with the connecting morphism ∂ curving from the end of one row to the start of the next. A, B, C are mirrored placeholders — renaming one updates both rows. Replace H by your functor (e.g. \\pi for homotopy groups) and tune the curve via the out/in angles.",
+    body: "\\begin{tikzcd}[column sep=#{1:normal}]\n\t\\cdots \\arrow[r] & H_n(#{2:A}) \\arrow[r, \"#{3:f}\"] & H_n(#{4:B}) \\arrow[r, \"#{5:g}\"] & H_n(#{6:C}) \\arrow[dll, \"\\partial\", out=-30, in=150] \\\\\n\t& H_{n-1}(#{2:A}) \\arrow[r] & H_{n-1}(#{4:B}) \\arrow[r] & \\cdots\n\\end{tikzcd}",
+  },
+  {
+    id: "builtin-footnotes",
+    title: "Footnote pack",
+    description:
+      "Footnotes three ways: the everyday inline \\footnote; the \\footnotemark + \\footnotetext split for places where \\footnote breaks (tables, captions, section titles); and a preamble line switching to symbol markers (* † ‡) instead of numbers.",
+    body: "Some claim\\footnote{#{1:Why it holds, with a reference.}} in the text.\n\n% In tables, captions, or section titles \\footnote breaks — split it:\n% ... cell text\\footnotemark ...\n% \\footnotetext{The note text, placed right after the table or caption.}\n\n% Symbol footnotes (* † ‡) instead of numbers — put in the preamble:\n% \\renewcommand{\\thefootnote}{\\fnsymbol{footnote}}",
   },
 ];

@@ -84,7 +84,8 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: "templates", items: this.userTemplates() });
   }
 
-  private recents(): string[] {
+  // Public: the QuickPick reads this to build its "recent" section too.
+  recents(): string[] {
     return this.storage.get<string[]>(RECENTS_KEY, []);
   }
 
