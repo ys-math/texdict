@@ -5,7 +5,7 @@ by its concept name (e.g. "integral" → `\int`) and insert it at the cursor.
 
 ## Status
 
-Phases 0–16 complete. Current version **0.0.7**, published to GitHub Releases via CI.
+Phases 0–16 complete. Current version **0.0.8**, published to GitHub Releases via CI.
 Dictionary holds **578 entries** (457 symbols + 121 document commands). Two UIs: a
 **QuickPick** search command and a **four-mode Webview palette** (Activity Bar):
 `Symbols` (grouped KaTeX grid with a RECENT section + tag chips), `Document` (command
@@ -50,7 +50,7 @@ No test files exist. There is no linter config (no `.eslintrc`).
 
 ```typescript
 interface Entry {
-  command:   string;    // inserted text; empty {} become snippet tab stops (e.g. "\\frac{}{}")
+  command:   string;    // base text; a `snippet` overrides insertion, else bare {} → tab stops (e.g. "\\usepackage{}")
   name:      string;    // human label, e.g. "integral"
   tags:      string[];  // many-to-many; tags[0] is the PRIMARY grouping tag
   symbol?:   string;    // unicode preview/fallback, e.g. "∫"
@@ -155,7 +155,7 @@ Constructor: `(extensionUri, storage /* globalState */, insert, insertBody)`.
 "main":       "./out/extension.js",
 "engines":    { "vscode": "^1.90.0" },
 "publisher":  "yutosasaki",
-"version":    "0.0.7",
+"version":    "0.0.8",
 "dependencies": { "katex": "^0.16.x" }
 ```
 
@@ -189,6 +189,10 @@ covers all Document-facet commands, and all symbol previews render through
   bodies as literal LaTeX; at most one level of balanced braces in placeholder defaults; use `plain: true` for
   bodies with literal `#1` macro parameters.
 - **Tag ordering**: `tags[0]` is the primary grouping tag (grid section / list category).
+- **WYSIWYG insertion (Phase 16 invariant)**: every Symbols button inserts exactly what
+  it renders — the preview (`example`, else `command`) must equal the snippet with its
+  placeholder defaults filled in. When adding an `example` or `snippet`, keep the two in
+  sync (the validation one-liner can diff them).
 - **Webview JS style**: no template literals or `${}` inside the inline script; string
   concatenation + `textContent` (never innerHTML with data).
 - **TypeScript**: strict, ES2022, no `any`, no eslint (not configured).
@@ -214,10 +218,10 @@ covers all Document-facet commands, and all symbol previews render through
 
 ## Release / CI
 
-`.github/workflows/release.yml` runs on every `v*` tag push: checkout → setup-node (20) →
-`npm ci` → `npm run compile` → `npx @vscode/vsce package` → `gh release create` (attaches
-the `.vsix`). Needs `permissions: contents: write`. Releases:
-https://github.com/ys-math/texdict/releases.
+`.github/workflows/release.yml` runs on every `v*` tag push: `actions/checkout@v6` →
+`actions/setup-node@v6` (Node 22) → `npm ci` → `npm run compile` →
+`npx @vscode/vsce package` → `gh release create` (attaches the `.vsix`). Needs
+`permissions: contents: write`. Releases: https://github.com/ys-math/texdict/releases.
 
 **To cut a release:**
 
@@ -234,5 +238,5 @@ Notes:
   committing (CI's `npm ci` requires the lockfile version to match).
 - A tag-triggered workflow added in the *same* push as its first tag may not fire
   (registration race); re-push the tag once. Subsequent tags trigger normally.
-- GitHub forces Node 24 for actions starting 2026-06-16; `checkout@v4`/`setup-node@v4`
-  emit deprecation warnings — bump to `@v5` when convenient.
+- The workflow runs on `actions/checkout@v6` + `actions/setup-node@v6` (Node 22), which
+  satisfies GitHub's 2026-06-16 Node-24-runner cutoff with no deprecation warnings.
