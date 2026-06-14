@@ -21,7 +21,8 @@ by keyboard or click.
   - **Document** — 121 document/text commands (preamble, sectioning, theorems, math
     display environments, lists, figures, tables, links & colors, references, index…)
     grouped by category. **Hovering a row shows an explanation** — what it does, caveats,
-    and a usage example — in a **resizable** detail pane (drag its top edge).
+    and a **worked, copy-ready example** (multi-line for environments like `figure` or
+    `align`) — in a **resizable** detail pane (drag its top edge).
   - **Templates** — 14 built-in starters (article skeleton, journal article (amsart),
     book format, theorem setup, commutative diagrams — tikz-cd square and a 3D TikZ
     cube —, short & long exact sequences, footnote pack, figure, table, bibliography,
@@ -77,7 +78,8 @@ recompile — search, the palette, and the tag filter re-derive themselves autom
 The only rule: **every tag you use must be listed in `FACETS`** (top of the same file), or
 it won't appear in the filter. Use `example` to control the palette preview, `pkg` to flag
 a required package, and `snippet` (with `#1` / `#{1:default}` tokens) for rich templates.
-Document-command explanations live in `src/descriptions.ts`; tips in `src/tips.ts`;
+Document-command explanations live in `src/descriptions.ts` (each a `{ what, example }`
+pair — the example shows in the detail pane); tips in `src/tips.ts`;
 built-in templates in `src/templates.ts`; the package reference in `src/packages.ts`.
 
 ## Development

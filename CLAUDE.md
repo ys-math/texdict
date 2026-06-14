@@ -87,9 +87,12 @@ exist in `FACETS`**. Document commands should also get a `DESCRIPTIONS` entry.
 
 ### `src/descriptions.ts`, `src/templates.ts`, `src/packages.ts`, `src/tips.ts` — auxiliary data
 
-- `DESCRIPTIONS: Record<string, string>` — keyed by exact `command`; what it does +
-  caveats + usage example, shown in the detail pane. **Must cover all 121 document
-  commands** (no missing/orphan keys — validate after edits).
+- `DESCRIPTIONS: Record<string, Description>` where `Description = { what, example }` —
+  keyed by exact `command`. `what` is the explanation (+ caveats); `example` is a realistic
+  (often multi-line) LaTeX usage snippet shown as a `dd-pre` code block under an "Example"
+  label in the detail pane. **Must cover all 121 document commands** with both fields
+  non-empty (no missing/orphan keys — validate after edits). Payload sends `d` (=`what`)
+  and `dx` (=`example`); examples are raw LaTeX rendered via `textContent`, not KaTeX.
 - `Template { id, title, description, body, plain? }` + `BUILTIN_TEMPLATES` (14). Bodies
   use `#1` / `#{1:default}` / `#0` tokens — defaults may contain **at most one level of balanced braces** (e.g. `#{1:\\tfrac{a}{b}}`); customSnippet() escapes `}` inside defaults because VSCode closes a placeholder at the first unescaped `}` (it does not brace-count).
   `plain: true` inserts the body literally (required when it contains LaTeX macro
@@ -177,8 +180,9 @@ Press **F5** to launch the Extension Development Host; **↻ Reload** (Cmd+R) af
 
 Useful validation one-liner pattern (run after dictionary/descriptions edits):
 `node -e` over `out/` — check no duplicate commands, all tags in FACETS, DESCRIPTIONS
-covers all Document-facet commands, and all symbol previews render through
-`require('katex').renderToString` (allowed fallbacks: `\parr`, `\lightning`).
+covers all Document-facet commands with non-empty `what` + `example` (no orphan keys), and
+all symbol previews render through `require('katex').renderToString` (allowed fallbacks:
+`\parr`, `\lightning`).
 
 ## Conventions
 
@@ -215,6 +219,7 @@ covers all Document-facet commands, and all symbol previews render through
 | 14 | QuickPick recent section; limit/colimit symbols; exact-sequence + footnote-pack templates | Done |
 | 15 | Placeholder defaults for all 32 blank-argument symbols; 42 decorated operator variants in topic groups | Done |
 | 16 | WYSIWYG palette: every symbol button inserts exactly its rendered preview (60 entries aligned; token defaults allow one brace level) | Done |
+| 17 | Worked example for every document command (descriptions → {what, example}; multi-line code block in the Document detail pane) | Done |
 
 ## Release / CI
 

@@ -12,7 +12,7 @@ const RECENTS_KEY = "texdict.recentSymbols";
 const RECENTS_MAX = 12;
 // globalState key holding the user-chosen height (px) of the detail pane.
 const DETAIL_HEIGHT_KEY = "texdict.detailHeight";
-const DETAIL_HEIGHT_DEFAULT = 100;
+const DETAIL_HEIGHT_DEFAULT = 140;
 
 // Only math symbols count as recents — document commands have their own views.
 const DOC_TAG_SET = new Set(FACETS.find((f) => f.name === "Document")?.tags ?? []);
@@ -151,7 +151,8 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
         pv: previewLatex(e), // LaTeX to render as the preview (symbol grid)
         x: e.example ?? "", // example to render as a small sample (document rows)
         p: e.pkg ?? "", // required non-standard package
-        d: DESCRIPTIONS[e.command] ?? "", // help text (document detail pane)
+        d: DESCRIPTIONS[e.command]?.what ?? "", // help text (document detail pane)
+        dx: DESCRIPTIONS[e.command]?.example ?? "", // worked example (document detail pane)
       }))
     );
 
@@ -214,6 +215,8 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
     .dd-cmd { font-family: var(--vscode-editor-font-family, monospace); font-size: 11px;
       color: var(--vscode-textPreformat-foreground); }
     .dd-desc { font-size: 12px; opacity: .85; margin-top: 4px; line-height: 1.4; }
+    .dd-ex-label { font-size: 9px; text-transform: uppercase; letter-spacing: .5px;
+      opacity: .5; margin-top: 8px; }
     .dd-hint { font-size: 11px; opacity: .5; }
     .dd-pre { margin: 4px 0 0; font-family: var(--vscode-editor-font-family, monospace); font-size: 10px;
       line-height: 1.4; white-space: pre-wrap; color: var(--vscode-textPreformat-foreground); }
@@ -413,6 +416,16 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       docDetail.appendChild(title);
       docDetail.appendChild(cmd);
       docDetail.appendChild(desc);
+      if (e.dx) {
+        const exLabel = document.createElement('div');
+        exLabel.className = 'dd-ex-label';
+        exLabel.textContent = 'Example';
+        const pre = document.createElement('pre');
+        pre.className = 'dd-pre';
+        pre.textContent = e.dx;
+        docDetail.appendChild(exLabel);
+        docDetail.appendChild(pre);
+      }
     }
     // Same pane, for a template: title, description, and the body as code.
     function showTplDetail(t) {
