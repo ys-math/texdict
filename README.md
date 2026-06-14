@@ -50,7 +50,7 @@ Download the latest `texdict-*.vsix` from the
 [**Releases**](https://github.com/ys-math/texdict/releases) page, then either:
 
 ```bash
-code --install-extension texdict-0.0.8.vsix
+code --install-extension texdict-0.0.9.vsix
 ```
 
 or in VSCode: **Extensions panel → `…` menu → Install from VSIX…** → pick the file →

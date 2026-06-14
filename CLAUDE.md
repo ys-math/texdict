@@ -5,7 +5,7 @@ by its concept name (e.g. "integral" → `\int`) and insert it at the cursor.
 
 ## Status
 
-Phases 0–16 complete. Current version **0.0.8**, published to GitHub Releases via CI.
+Phases 0–17 complete. Current version **0.0.9**, published to GitHub Releases via CI.
 Dictionary holds **578 entries** (457 symbols + 121 document commands). Two UIs: a
 **QuickPick** search command and a **four-mode Webview palette** (Activity Bar):
 `Symbols` (grouped KaTeX grid with a RECENT section + tag chips), `Document` (command
@@ -158,7 +158,7 @@ Constructor: `(extensionUri, storage /* globalState */, insert, insertBody)`.
 "main":       "./out/extension.js",
 "engines":    { "vscode": "^1.90.0" },
 "publisher":  "yutosasaki",
-"version":    "0.0.8",
+"version":    "0.0.9",
 "dependencies": { "katex": "^0.16.x" }
 ```
 
