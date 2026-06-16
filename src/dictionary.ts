@@ -636,6 +636,14 @@ export const DICTIONARY: Entry[] = [
   { command: "\\begin{remark}", name: "remark", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{remark}\n\t#0\n\\end{remark}" },
   { command: "\\begin{proof}", name: "proof", tags: ["theorem"], pkg: "amsthm", snippet: "\\begin{proof}\n\t#0\n\\end{proof}" },
   { command: "\\newtheorem{}{}", name: "declare theorem", tags: ["theorem"], pkg: "amsthm", snippet: "\\newtheorem{#1}{#2}", keywords: ["define environment"] },
+  // ── Proof trees (bussproofs) ─────────────────────────────────────────
+  { command: "\\begin{prooftree}", name: "proof tree", tags: ["theorem"], pkg: "bussproofs", snippet: "\\begin{prooftree}\n\t#0\n\\end{prooftree}", keywords: ["derivation", "natural deduction", "sequent calculus", "bussproofs"] },
+  { command: "\\AxiomC{}", name: "axiom (leaf)", tags: ["theorem"], pkg: "bussproofs", snippet: "\\AxiomC{$#1$}", keywords: ["proof tree", "premise", "leaf", "hypothesis", "bussproofs"] },
+  { command: "\\UnaryInfC{}", name: "unary inference", tags: ["theorem"], pkg: "bussproofs", snippet: "\\UnaryInfC{$#1$}", keywords: ["proof tree", "one premise", "inference rule", "conclusion", "bussproofs"] },
+  { command: "\\BinaryInfC{}", name: "binary inference", tags: ["theorem"], pkg: "bussproofs", snippet: "\\BinaryInfC{$#1$}", keywords: ["proof tree", "two premises", "inference rule", "conclusion", "bussproofs"] },
+  { command: "\\TrinaryInfC{}", name: "trinary inference", tags: ["theorem"], pkg: "bussproofs", snippet: "\\TrinaryInfC{$#1$}", keywords: ["proof tree", "three premises", "inference rule", "conclusion", "bussproofs"] },
+  { command: "\\RightLabel{}", name: "rule label (right)", tags: ["theorem"], pkg: "bussproofs", snippet: "\\RightLabel{$#1$}", keywords: ["proof tree", "rule name", "inference label", "bussproofs"] },
+  { command: "\\LeftLabel{}", name: "rule label (left)", tags: ["theorem"], pkg: "bussproofs", snippet: "\\LeftLabel{$#1$}", keywords: ["proof tree", "rule name", "inference label", "bussproofs"] },
   { command: "\\footnote{}", name: "footnote", tags: ["text style"], snippet: "\\footnote{#1}", keywords: ["note"] },
   { command: "\\marginpar{}", name: "margin note", tags: ["text style"], keywords: ["margin"] },
 

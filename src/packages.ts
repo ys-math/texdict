@@ -18,6 +18,7 @@ export const PACKAGES: Pkg[] = [
   { name: "mathrsfs", category: "math", load: "\\usepackage{mathrsfs}", description: "Provides \\mathscr — the formal script alphabet (distinct from \\mathcal), common for sheaves and categories." },
   { name: "bm", category: "math", load: "\\usepackage{bm}", description: "\\bm{} for proper bold math symbols (vectors, matrices) — bolder and more reliable than \\mathbf for greek and operators." },
   { name: "stmaryrd", category: "math", load: "\\usepackage{stmaryrd}", description: "St Mary Road symbols: \\llbracket/\\rrbracket semantic brackets, \\lightning, and other CS/logic symbols." },
+  { name: "bussproofs", category: "math", load: "\\usepackage{bussproofs}", description: "Proof trees for natural deduction and sequent calculus: \\AxiomC for leaves, \\UnaryInfC/\\BinaryInfC/\\TrinaryInfC for inferences, \\RightLabel/\\LeftLabel for rule names, all inside the prooftree environment.", tip: "Build trees bottom-up: every \\AxiomC premise must be stated before the …InfC that consumes it." },
 
   // ── Layout & typography ──────────────────────────────────────────────
   { name: "geometry", category: "layout & typography", load: "\\usepackage[margin=1in]{geometry}", description: "Sets the page dimensions and margins with readable options.", tip: "One margin=… option usually replaces a pile of \\setlength calls." },

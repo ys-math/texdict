@@ -5,12 +5,13 @@ by its concept name (e.g. "integral" → `\int`) and insert it at the cursor.
 
 ## Status
 
-Phases 0–17 complete. Current version **0.0.9**, published to GitHub Releases via CI.
-Dictionary holds **578 entries** (457 symbols + 121 document commands). Two UIs: a
+Phases 0–18 complete. Current version **0.0.9**, published to GitHub Releases via CI.
+Dictionary holds **585 entries** (457 symbols + 128 document commands). Two UIs: a
 **QuickPick** search command and a **four-mode Webview palette** (Activity Bar):
 `Symbols` (grouped KaTeX grid with a RECENT section + tag chips), `Document` (command
-list with hover explanations), `Templates` (14 built-in + user-saved templates + tips
-strip), `Packages` (32-package reference). The explanation pane is user-resizable.
+list with hover explanations), `Templates` (16 built-in, grouped by category, + user-saved
+templates + tips strip), `Packages` (33-package reference). The explanation pane is
+user-resizable.
 Releases are automated by GitHub Actions on `v*` tag push (see "Release / CI").
 
 ## File structure
@@ -24,8 +25,8 @@ texdict/
 │   ├── panel.ts          — WebviewViewProvider: 4-mode palette; globalState storage
 │   ├── dictionary.ts     — Entry[], FACETS, facetOf() — pure data, no VS Code imports
 │   ├── descriptions.ts   — DESCRIPTIONS: command → help text for the Document detail pane
-│   ├── templates.ts      — Template interface + BUILTIN_TEMPLATES (14; `plain` skips tokens)
-│   ├── packages.ts       — Pkg interface + PACKAGES (32) for the Packages tab
+│   ├── templates.ts      — Template interface + BUILTIN_TEMPLATES (16; `category` groups, `plain` skips tokens)
+│   ├── packages.ts       — Pkg interface + PACKAGES (33) for the Packages tab
 │   └── tips.ts           — TIPS: LaTeX best-practice strings for the 💡 tip strip
 ├── scripts/
 │   └── copy-katex.js     — build step: copies KaTeX (js/css/woff2) into media/katex/
@@ -76,7 +77,7 @@ Four facets group every tag (each tag belongs to exactly one):
   alignment, spacing, list, table, figure, text style, font size, link & color,
   reference, index
 
-`DICTIONARY` has **578 entries**: 457 math symbols + 121 document commands (entries whose
+`DICTIONARY` has **585 entries**: 457 math symbols + 128 document commands (entries whose
 tags fall in the Document facet — the palette partitions on this). Math-font alphabets are
 **one compact entry per font** (`\mathbb{}`, …, tagged `font`). Structural commands carry
 a `snippet` (e.g. `\begin{align}` inserts an aligned two-row skeleton).
@@ -90,14 +91,18 @@ exist in `FACETS`**. Document commands should also get a `DESCRIPTIONS` entry.
 - `DESCRIPTIONS: Record<string, Description>` where `Description = { what, example }` —
   keyed by exact `command`. `what` is the explanation (+ caveats); `example` is a realistic
   (often multi-line) LaTeX usage snippet shown as a `dd-pre` code block under an "Example"
-  label in the detail pane. **Must cover all 121 document commands** with both fields
+  label in the detail pane. **Must cover all 128 document commands** with both fields
   non-empty (no missing/orphan keys — validate after edits). Payload sends `d` (=`what`)
   and `dx` (=`example`); examples are raw LaTeX rendered via `textContent`, not KaTeX.
-- `Template { id, title, description, body, plain? }` + `BUILTIN_TEMPLATES` (14). Bodies
+- `Template { id, title, description, body, category?, plain? }` + `BUILTIN_TEMPLATES` (16).
+  `category` groups built-ins under headers in the Templates tab (six groups: Document
+  skeletons, Preamble, Theorems & proofs, Diagrams, Floats, Bibliography & notes); header
+  order = first appearance in the array, so array order is grouped by category. User-saved
+  templates omit `category` and stay under "My templates". Bodies
   use `#1` / `#{1:default}` / `#0` tokens — defaults may contain **at most one level of balanced braces** (e.g. `#{1:\\tfrac{a}{b}}`); customSnippet() escapes `}` inside defaults because VSCode closes a placeholder at the first unescaped `}` (it does not brace-count).
   `plain: true` inserts the body literally (required when it contains LaTeX macro
   parameters like `#1`, e.g. the macro pack's `\newcommand` definitions).
-- `Pkg { name, category, description, load, tip? }` + `PACKAGES` (32) — the Packages tab;
+- `Pkg { name, category, description, load, tip? }` + `PACKAGES` (33) — the Packages tab;
   `load` is the `\usepackage` line inserted on click.
 - `TIPS: string[]` — 15 best-practice tips (rendered with `textContent`).
 
@@ -220,6 +225,7 @@ all symbol previews render through `require('katex').renderToString` (allowed fa
 | 15 | Placeholder defaults for all 32 blank-argument symbols; 42 decorated operator variants in topic groups | Done |
 | 16 | WYSIWYG palette: every symbol button inserts exactly its rendered preview (60 entries aligned; token defaults allow one brace level) | Done |
 | 17 | Worked example for every document command (descriptions → {what, example}; multi-line code block in the Document detail pane) | Done |
+| 18 | bussproofs package + 7 proof-tree commands; worked natural-deduction & sequent-calculus derivation templates (mirrored placeholders); built-in templates grouped into 6 categories | Done |
 
 ## Release / CI
 

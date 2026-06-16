@@ -2,7 +2,7 @@
 
 A LaTeX dictionary for mathematicians. Search a symbol by its concept name
 (e.g. *"integral"*, *"for all"*, *"reals"*) and insert the LaTeX command at your cursor —
-**457 symbols + 121 document commands**, a package reference, and ready-made templates,
+**457 symbols + 128 document commands**, a package reference, and ready-made templates,
 by keyboard or click.
 
 ## Features
@@ -18,17 +18,20 @@ by keyboard or click.
     forms (`\sum_{d \mid n}` under number theory, `\prod_{x \in X}` under set theory,
     `\oint_{\gamma}` under analysis…), each inserting an adjustable snippet.
     Wide previews auto-scale to fit. One-click **tag-chip** filtering (OR semantics).
-  - **Document** — 121 document/text commands (preamble, sectioning, theorems, math
-    display environments, lists, figures, tables, links & colors, references, index…)
+  - **Document** — 128 document/text commands (preamble, sectioning, theorems, proof trees,
+    math display environments, lists, figures, tables, links & colors, references, index…)
     grouped by category. **Hovering a row shows an explanation** — what it does, caveats,
     and a **worked, copy-ready example** (multi-line for environments like `figure` or
     `align`) — in a **resizable** detail pane (drag its top edge).
-  - **Templates** — 14 built-in starters (article skeleton, journal article (amsart),
-    book format, theorem setup, commutative diagrams — tikz-cd square and a 3D TikZ
-    cube —, short & long exact sequences, footnote pack, figure, table, bibliography,
-    macro pack…) plus **your own saved templates**, with a rotating 💡 strip of LaTeX
+  - **Templates** — 16 built-in starters **grouped by category** (Document skeletons,
+    Preamble, Theorems & proofs, Diagrams, Floats, Bibliography & notes): article, journal
+    article (amsart), book format, theorem setup, theorem + proof, **proof trees — worked
+    natural-deduction & sequent-calculus derivations, via bussproofs**, commutative diagrams — tikz-cd square
+    and a 3D TikZ cube —, short & long exact sequences, figure, table, bibliography, footnote
+    pack, macro pack… plus **your own saved templates**, with a rotating 💡 strip of LaTeX
     best-practice tips.
-  - **Packages** — a reference of 32 common packages (amsmath, hyperref, tikz, booktabs…)
+  - **Packages** — a reference of 33 common packages (amsmath, hyperref, tikz, booktabs,
+    bussproofs…)
     with what each does and a gotcha tip; clicking inserts the typical `\usepackage` line.
 - **Save your own templates** — click **+ New** in the palette, or select LaTeX in the
   editor and run **"TeXDict: Save Selection as Template"** (title + description prompted).

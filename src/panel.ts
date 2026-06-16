@@ -315,7 +315,6 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
         <span id="tip-text"></span>
         <button id="tip-next" title="Next tip">→</button>
       </div>
-      <div class="doc-cat">Built-in</div>
       <div id="builtin-list"></div>
       <div class="tpl-head">
         <span class="doc-cat">My templates</span>
@@ -765,8 +764,29 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
       return { el: row, q: (t.title + ' ' + t.description).toLowerCase() };
     }
 
-    builtinRows = BUILTINS.map(function (t) { return makeTplRow(t, true); });
-    builtinRows.forEach(function (r) { builtinList.appendChild(r.el); });
+    // Group built-ins under category headers (order = first appearance in
+    // BUILTINS), mirroring the Packages tab. builtinGroups drives header
+    // hide/show on filtering; builtinRows stays a flat list for the count.
+    const builtinGroups = [];
+    const builtinCats = [];
+    BUILTINS.forEach(function (t) {
+      const cat = t.category || 'Built-in';
+      if (builtinCats.indexOf(cat) === -1) { builtinCats.push(cat); }
+    });
+    builtinCats.forEach(function (cat) {
+      const header = document.createElement('div');
+      header.className = 'doc-cat';
+      header.textContent = cat.toUpperCase();
+      builtinList.appendChild(header);
+      const rows = [];
+      BUILTINS.filter(function (t) { return (t.category || 'Built-in') === cat; }).forEach(function (t) {
+        const r = makeTplRow(t, true);
+        builtinList.appendChild(r.el);
+        rows.push(r);
+        builtinRows.push(r);
+      });
+      builtinGroups.push({ header: header, rows: rows });
+    });
 
     function renderUserList() {
       userList.innerHTML = '';
@@ -788,14 +808,23 @@ export class TexDictViewProvider implements vscode.WebviewViewProvider {
 
     function applyTplFilter() {
       const q = search.value.trim().toLowerCase();
-      const all = builtinRows.concat(userRows);
       let shown = 0;
-      all.forEach(function (r) {
+      builtinGroups.forEach(function (g) {
+        let groupShown = 0;
+        g.rows.forEach(function (r) {
+          const vis = !q || r.q.indexOf(q) !== -1;
+          r.el.style.display = vis ? '' : 'none';
+          if (vis) { groupShown++; shown++; }
+        });
+        g.header.style.display = groupShown ? '' : 'none';
+      });
+      userRows.forEach(function (r) {
         const vis = !q || r.q.indexOf(q) !== -1;
         r.el.style.display = vis ? '' : 'none';
         if (vis) shown++;
       });
-      if (mode === 'templates') { count.textContent = shown + ' / ' + all.length + ' templates'; }
+      const total = builtinRows.length + userRows.length;
+      if (mode === 'templates') { count.textContent = shown + ' / ' + total + ' templates'; }
     }
 
     // The "+ New" form.
